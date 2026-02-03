@@ -32,7 +32,7 @@ export const itemsApi = {
     if (image) {
       formData.append('image', image);
     }
-    const response = await api.put<Item>(`/items/${id}`, formData);
+    const response = await api.patch<Item>(`/items/${id}`, formData);
     return response.data;
   },
 

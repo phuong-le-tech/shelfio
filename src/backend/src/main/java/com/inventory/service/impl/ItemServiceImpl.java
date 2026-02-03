@@ -54,7 +54,7 @@ public class ItemServiceImpl implements IItemService {
 
     @Override
     @Transactional
-    public Item createItem(ItemRequest request, MultipartFile image) throws IOException {
+    public Item createItem(@NonNull ItemRequest request, MultipartFile image) throws IOException {
         Item item = new Item();
         item.setName(request.name());
         item.setCategory(request.category());

@@ -64,7 +64,7 @@ public class ItemController {
         return ResponseEntity.status(HttpStatus.CREATED).body(ItemResponse.fromEntity(item));
     }
 
-    @PutMapping(value = "/{id}", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    @PatchMapping(value = "/{id}", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     public ItemResponse updateItem(
             @PathVariable @NonNull UUID id,
             @RequestPart("data") @Valid @NonNull ItemRequest request,
