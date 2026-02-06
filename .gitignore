@@ -9,6 +9,9 @@ src/backend/target/
 # Frontend
 src/frontend/node_modules/
 src/frontend/dist/
+*.tsbuildinfo
+src/frontend/vite.config.js
+src/frontend/vite.config.d.ts
 
 # IDE
 .idea/

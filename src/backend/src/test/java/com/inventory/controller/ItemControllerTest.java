@@ -130,7 +130,7 @@ class ItemControllerTest {
     }
 
     @Nested
-    @DisplayName("POST /api/v1/items/")
+    @DisplayName("POST /api/v1/items")
     class CreateItemTests {
 
         @Test
@@ -139,12 +139,10 @@ class ItemControllerTest {
             ItemRequest request = new ItemRequest("New Item", testListId, ItemStatus.TO_PREPARE, 5);
             when(itemService.createItem(any(ItemRequest.class), any())).thenReturn(testItem);
 
-            MockMultipartFile dataPart = new MockMultipartFile(
-                    "data", "", "application/json",
-                    objectMapper.writeValueAsBytes(request));
+            String jsonData = objectMapper.writeValueAsString(request);
 
-            mockMvc.perform(multipart("/api/v1/items/")
-                            .file(dataPart))
+            mockMvc.perform(multipart("/api/v1/items")
+                            .param("data", jsonData))
                     .andExpect(status().isCreated())
                     .andExpect(jsonPath("$.name").value("Test Item"));
         }
@@ -155,15 +153,13 @@ class ItemControllerTest {
             ItemRequest request = new ItemRequest("New Item", testListId, ItemStatus.TO_PREPARE, 10);
             when(itemService.createItem(any(ItemRequest.class), any())).thenReturn(testItem);
 
-            MockMultipartFile dataPart = new MockMultipartFile(
-                    "data", "", "application/json",
-                    objectMapper.writeValueAsBytes(request));
+            String jsonData = objectMapper.writeValueAsString(request);
             MockMultipartFile imagePart = new MockMultipartFile(
                     "image", "test.jpg", "image/jpeg", "test image".getBytes());
 
-            mockMvc.perform(multipart("/api/v1/items/")
-                            .file(dataPart)
-                            .file(imagePart))
+            mockMvc.perform(multipart("/api/v1/items")
+                            .file(imagePart)
+                            .param("data", jsonData))
                     .andExpect(status().isCreated());
         }
     }
@@ -185,12 +181,10 @@ class ItemControllerTest {
 
             when(itemService.updateItem(eq(testId), any(ItemRequest.class), any())).thenReturn(updatedItem);
 
-            MockMultipartFile dataPart = new MockMultipartFile(
-                    "data", "", "application/json",
-                    objectMapper.writeValueAsBytes(request));
+            String jsonData = objectMapper.writeValueAsString(request);
 
             mockMvc.perform(multipart("/api/v1/items/{id}", testId)
-                            .file(dataPart)
+                            .param("data", jsonData)
                             .with(req -> {
                                 req.setMethod("PATCH");
                                 return req;

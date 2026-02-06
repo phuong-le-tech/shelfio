@@ -67,12 +67,10 @@ class ItemControllerIntegrationTest {
         void createAndRetrieveItem_fullFlow() throws Exception {
             ItemRequest request = new ItemRequest("Integration Test Item", testList.getId(), ItemStatus.TO_PREPARE, 5);
 
-            MockMultipartFile dataPart = new MockMultipartFile(
-                    "data", "", "application/json",
-                    objectMapper.writeValueAsBytes(request));
+            String jsonData = objectMapper.writeValueAsString(request);
 
-            MvcResult createResult = mockMvc.perform(multipart("/api/v1/items/")
-                            .file(dataPart))
+            MvcResult createResult = mockMvc.perform(multipart("/api/v1/items")
+                            .param("data", jsonData))
                     .andExpect(status().isCreated())
                     .andExpect(jsonPath("$.name").value("Integration Test Item"))
                     .andExpect(jsonPath("$.itemListId").value(testList.getId().toString()))
@@ -96,17 +94,15 @@ class ItemControllerIntegrationTest {
         void createItemWithImage_fullFlow() throws Exception {
             ItemRequest request = new ItemRequest("Item With Image", testList.getId(), ItemStatus.TO_PREPARE, 10);
 
-            MockMultipartFile dataPart = new MockMultipartFile(
-                    "data", "", "application/json",
-                    objectMapper.writeValueAsBytes(request));
+            String jsonData = objectMapper.writeValueAsString(request);
             MockMultipartFile imagePart = new MockMultipartFile(
                     "image", "test.jpg", "image/jpeg", "fake image content".getBytes());
 
-            MvcResult result = mockMvc.perform(multipart("/api/v1/items/")
-                            .file(dataPart)
-                            .file(imagePart))
+            MvcResult result = mockMvc.perform(multipart("/api/v1/items")
+                            .file(imagePart)
+                            .param("data", jsonData))
                     .andExpect(status().isCreated())
-                    .andExpect(jsonPath("$.imageBase64").isNotEmpty())
+                    .andExpect(jsonPath("$.hasImage").value(true))
                     .andExpect(jsonPath("$.contentType").value("image/jpeg"))
                     .andReturn();
 
@@ -126,12 +122,10 @@ class ItemControllerIntegrationTest {
             Item item = createTestItem("Original Name", testList, ItemStatus.TO_PREPARE, 5);
 
             ItemRequest updateRequest = new ItemRequest("Updated Name", testList.getId(), ItemStatus.READY, 15);
-            MockMultipartFile dataPart = new MockMultipartFile(
-                    "data", "", "application/json",
-                    objectMapper.writeValueAsBytes(updateRequest));
+            String jsonData = objectMapper.writeValueAsString(updateRequest);
 
             mockMvc.perform(multipart("/api/v1/items/{id}", item.getId())
-                            .file(dataPart)
+                            .param("data", jsonData)
                             .with(req -> {
                                 req.setMethod("PATCH");
                                 return req;
