@@ -9,18 +9,11 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.lang.NonNull;
 import org.springframework.stereotype.Repository;
 
-import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
 @Repository
 public interface ItemListRepository extends JpaRepository<ItemList, UUID>, JpaSpecificationExecutor<ItemList> {
-
-    @Query("SELECT il.category, COUNT(il) FROM ItemList il GROUP BY il.category")
-    List<Object[]> countByCategory();
-
-    @Query("SELECT COUNT(i) FROM Item i WHERE i.itemList.id = :listId")
-    long countItemsByListId(UUID listId);
 
     @Query("SELECT il FROM ItemList il LEFT JOIN FETCH il.items WHERE il.id = :id")
     Optional<ItemList> findByIdWithItems(@NonNull UUID id);
@@ -32,7 +25,4 @@ public interface ItemListRepository extends JpaRepository<ItemList, UUID>, JpaSp
     Optional<ItemList> findByIdAndUserId(@NonNull UUID id, @NonNull UUID userId);
 
     boolean existsByIdAndUserId(@NonNull UUID id, @NonNull UUID userId);
-
-    @Query("SELECT il.category, COUNT(il) FROM ItemList il WHERE il.user.id = :userId GROUP BY il.category")
-    List<Object[]> countByCategoryAndUserId(@NonNull UUID userId);
 }

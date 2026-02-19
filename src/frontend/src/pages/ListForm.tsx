@@ -1,11 +1,15 @@
 import { useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { useForm } from 'react-hook-form';
-import { ArrowLeft, AlertCircle } from 'lucide-react';
+import { useForm, useFieldArray } from 'react-hook-form';
+import { ArrowLeft, AlertCircle, Plus, Trash2 } from 'lucide-react';
 import { listsApi } from '../services/api';
-import { ItemListFormData } from '../types/item';
+import { ItemListFormData, FIELD_TYPE_OPTIONS, FIELD_TYPE_LABELS, CustomFieldType } from '../types/item';
 import { Skeleton, SkeletonText } from '../components/Skeleton';
 import { useToast } from '../components/Toast';
+
+function slugify(label: string): string {
+  return label.toLowerCase().replace(/[^a-z0-9]+/g, '_').replace(/^_|_$/g, '');
+}
 
 export default function ListForm() {
   const { id } = useParams();
@@ -16,12 +20,18 @@ export default function ListForm() {
   const [loading, setLoading] = useState(isEditing);
   const [submitting, setSubmitting] = useState(false);
 
-  const { register, handleSubmit, reset, formState: { errors } } = useForm<ItemListFormData>({
+  const { register, handleSubmit, reset, control, formState: { errors } } = useForm<ItemListFormData>({
     defaultValues: {
       name: '',
       description: '',
       category: '',
+      customFieldDefinitions: [],
     },
+  });
+
+  const { fields, append, remove } = useFieldArray({
+    control,
+    name: 'customFieldDefinitions',
   });
 
   useEffect(() => {
@@ -37,6 +47,7 @@ export default function ListForm() {
         name: list.name,
         description: list.description || '',
         category: list.category || '',
+        customFieldDefinitions: list.customFieldDefinitions || [],
       });
     } catch (error) {
       console.error('Failed to load list:', error);
@@ -50,6 +61,14 @@ export default function ListForm() {
   const onSubmit = async (data: ItemListFormData) => {
     setSubmitting(true);
     try {
+      if (data.customFieldDefinitions) {
+        data.customFieldDefinitions = data.customFieldDefinitions.map((def, i) => ({
+          ...def,
+          name: def.name || slugify(def.label),
+          displayOrder: i,
+        }));
+      }
+
       if (isEditing && id) {
         await listsApi.update(id, data);
         showToast('Liste mise à jour avec succès', 'success');
@@ -150,6 +169,82 @@ export default function ListForm() {
               className="w-full px-4 py-3 bg-surface-base/50 border border-white/[0.08] rounded-xl text-stone-100 placeholder-stone-500 transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-amber-500/30 focus:border-amber-500/40 hover:border-white/[0.12]"
               placeholder="Entrez la catégorie (optionnel)"
             />
+          </div>
+
+          {/* Custom Field Definitions */}
+          <div>
+            <label className="block text-xs font-medium text-stone-400 mb-3 uppercase tracking-wider">
+              Champs personnalisés
+            </label>
+
+            {fields.length > 0 && (
+              <div className="space-y-3 mb-4">
+                {fields.map((field, index) => (
+                  <div
+                    key={field.id}
+                    className="flex gap-3 items-start p-3 bg-surface-base/30 border border-white/[0.06] rounded-xl"
+                  >
+                    <div className="flex-1 min-w-0">
+                      <input
+                        type="text"
+                        {...register(`customFieldDefinitions.${index}.label`, {
+                          required: 'Le libellé est requis',
+                        })}
+                        className="w-full px-3 py-2 bg-surface-base/50 border border-white/[0.08] rounded-lg text-stone-100 placeholder-stone-500 text-sm transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-amber-500/30 focus:border-amber-500/40"
+                        placeholder="Libellé du champ"
+                      />
+                    </div>
+
+                    <div className="w-32">
+                      <select
+                        {...register(`customFieldDefinitions.${index}.type`)}
+                        className="w-full px-3 py-2 bg-surface-base/50 border border-white/[0.08] rounded-lg text-stone-100 text-sm transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-amber-500/30 focus:border-amber-500/40"
+                      >
+                        {FIELD_TYPE_OPTIONS.map((t) => (
+                          <option key={t} value={t}>
+                            {FIELD_TYPE_LABELS[t as CustomFieldType]}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+
+                    <label className="flex items-center gap-1.5 pt-2 shrink-0">
+                      <input
+                        type="checkbox"
+                        {...register(`customFieldDefinitions.${index}.required`)}
+                        className="rounded border-white/[0.15] bg-surface-base/50 text-amber-500 focus:ring-amber-500/30 focus:ring-offset-0"
+                      />
+                      <span className="text-xs text-stone-400">Requis</span>
+                    </label>
+
+                    <button
+                      type="button"
+                      onClick={() => remove(index)}
+                      className="p-2 text-stone-500 hover:text-red-400 transition-colors shrink-0"
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            <button
+              type="button"
+              onClick={() =>
+                append({
+                  name: '',
+                  label: '',
+                  type: 'TEXT',
+                  required: false,
+                  displayOrder: fields.length,
+                })
+              }
+              className="inline-flex items-center gap-1.5 px-4 py-2 text-sm text-stone-400 hover:text-stone-200 bg-white/[0.03] hover:bg-white/[0.06] border border-dashed border-white/[0.1] hover:border-white/[0.15] rounded-xl transition-all duration-200"
+            >
+              <Plus className="h-4 w-4" />
+              Ajouter un champ
+            </button>
           </div>
 
           <div className="flex gap-4 pt-4">

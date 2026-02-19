@@ -1,7 +1,7 @@
 package com.inventory.controller;
 
+import com.inventory.exception.CustomFieldValidationException;
 import com.inventory.exception.FileValidationException;
-import com.inventory.exception.ForbiddenException;
 import com.inventory.exception.ItemListNotFoundException;
 import com.inventory.exception.ItemNotFoundException;
 import com.inventory.exception.UnauthorizedException;
@@ -55,6 +55,12 @@ public class GlobalExceptionHandler {
                 .body(Map.of("error", e.getMessage()));
     }
 
+    @ExceptionHandler(CustomFieldValidationException.class)
+    public ResponseEntity<Map<String, String>> handleCustomFieldValidation(CustomFieldValidationException e) {
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                .body(Map.of("error", e.getMessage()));
+    }
+
     @ExceptionHandler(FileValidationException.class)
     public ResponseEntity<Map<String, String>> handleFileValidation(FileValidationException e) {
         return ResponseEntity.status(HttpStatus.BAD_REQUEST)
@@ -74,12 +80,6 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(UnauthorizedException.class)
     public ResponseEntity<Map<String, String>> handleUnauthorized(UnauthorizedException e) {
         return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
-                .body(Map.of("error", e.getMessage()));
-    }
-
-    @ExceptionHandler(ForbiddenException.class)
-    public ResponseEntity<Map<String, String>> handleForbidden(ForbiddenException e) {
-        return ResponseEntity.status(HttpStatus.FORBIDDEN)
                 .body(Map.of("error", e.getMessage()));
     }
 

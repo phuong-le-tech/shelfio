@@ -46,6 +46,9 @@ class ItemServiceImplTest {
     @Mock
     private ItemListRepository itemListRepository;
 
+    @Mock
+    private CustomFieldValidator customFieldValidator;
+
     @InjectMocks
     private ItemServiceImpl itemService;
 
@@ -127,7 +130,7 @@ class ItemServiceImplTest {
         @Test
         @DisplayName("should create item with valid request")
         void createItem_validRequest_createsItem() throws IOException {
-            ItemRequest request = new ItemRequest("New Item", testListId, ItemStatus.TO_PREPARE, 5);
+            ItemRequest request = new ItemRequest("New Item", testListId, ItemStatus.TO_PREPARE, 5, null);
             when(itemListRepository.findById(testListId)).thenReturn(Optional.of(testList));
             when(itemRepository.save(any(Item.class))).thenAnswer(invocation -> {
                 Item saved = invocation.getArgument(0);
@@ -147,7 +150,7 @@ class ItemServiceImplTest {
         @Test
         @DisplayName("should create item with default status when not provided")
         void createItem_noStatus_usesDefaultStatus() throws IOException {
-            ItemRequest request = new ItemRequest("New Item", testListId, null, null);
+            ItemRequest request = new ItemRequest("New Item", testListId, null, null, null);
             when(itemListRepository.findById(testListId)).thenReturn(Optional.of(testList));
             when(itemRepository.save(any(Item.class))).thenAnswer(invocation -> invocation.getArgument(0));
 
@@ -161,7 +164,7 @@ class ItemServiceImplTest {
         @DisplayName("should throw exception when list not found")
         void createItem_listNotFound_throwsException() {
             UUID nonExistingListId = UUID.randomUUID();
-            ItemRequest request = new ItemRequest("New Item", nonExistingListId, ItemStatus.TO_PREPARE, 5);
+            ItemRequest request = new ItemRequest("New Item", nonExistingListId, ItemStatus.TO_PREPARE, 5, null);
             when(itemListRepository.findById(nonExistingListId)).thenReturn(Optional.empty());
 
             assertThatThrownBy(() -> itemService.createItem(request, null))
@@ -171,7 +174,7 @@ class ItemServiceImplTest {
         @Test
         @DisplayName("should store image data when provided")
         void createItem_withImage_storesImageData() throws IOException {
-            ItemRequest request = new ItemRequest("New Item", testListId, ItemStatus.TO_PREPARE, 10);
+            ItemRequest request = new ItemRequest("New Item", testListId, ItemStatus.TO_PREPARE, 10, null);
             MockMultipartFile image = new MockMultipartFile(
                     "image", "test.jpg", "image/jpeg", "test image content".getBytes());
 
@@ -193,7 +196,7 @@ class ItemServiceImplTest {
         @Test
         @DisplayName("should update existing item")
         void updateItem_existingId_updatesItem() throws IOException {
-            ItemRequest request = new ItemRequest("Updated Name", testListId, ItemStatus.READY, 20);
+            ItemRequest request = new ItemRequest("Updated Name", testListId, ItemStatus.READY, 20, null);
             when(itemRepository.findById(testId)).thenReturn(Optional.of(testItem));
             when(itemListRepository.findById(testListId)).thenReturn(Optional.of(testList));
             when(itemRepository.save(any(Item.class))).thenAnswer(invocation -> invocation.getArgument(0));
@@ -210,7 +213,7 @@ class ItemServiceImplTest {
         @DisplayName("should keep existing status when not provided in request")
         void updateItem_noStatus_keepsExistingStatus() throws IOException {
             testItem.setStatus(ItemStatus.ARCHIVED);
-            ItemRequest request = new ItemRequest("Updated Name", testListId, null, null);
+            ItemRequest request = new ItemRequest("Updated Name", testListId, null, null, null);
             when(itemRepository.findById(testId)).thenReturn(Optional.of(testItem));
             when(itemListRepository.findById(testListId)).thenReturn(Optional.of(testList));
             when(itemRepository.save(any(Item.class))).thenAnswer(invocation -> invocation.getArgument(0));

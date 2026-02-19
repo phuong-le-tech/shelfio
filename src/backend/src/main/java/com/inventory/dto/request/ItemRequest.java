@@ -4,6 +4,7 @@ import com.inventory.enums.ItemStatus;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 
+import java.util.Map;
 import java.util.UUID;
 
 public record ItemRequest(
@@ -16,5 +17,7 @@ public record ItemRequest(
 
         ItemStatus status,
 
-        Integer stock
+        Integer stock,
+
+        Map<String, Object> customFieldValues
 ) {}

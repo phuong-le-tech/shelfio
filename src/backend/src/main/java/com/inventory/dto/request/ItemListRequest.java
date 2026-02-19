@@ -1,6 +1,10 @@
 package com.inventory.dto.request;
 
+import com.inventory.dto.CustomFieldDefinition;
+import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotBlank;
+
+import java.util.List;
 
 public record ItemListRequest(
 
@@ -9,5 +13,7 @@ public record ItemListRequest(
 
         String description,
 
-        String category
+        String category,
+
+        @Valid List<CustomFieldDefinition> customFieldDefinitions
 ) {}

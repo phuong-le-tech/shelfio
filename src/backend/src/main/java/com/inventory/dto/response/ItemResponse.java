@@ -3,6 +3,7 @@ package com.inventory.dto.response;
 import com.inventory.model.Item;
 
 import java.time.LocalDateTime;
+import java.util.Map;
 import java.util.UUID;
 
 
@@ -14,6 +15,7 @@ public record ItemResponse(
         Integer stock,
         boolean hasImage,
         String contentType,
+        Map<String, Object> customFieldValues,
         LocalDateTime createdAt,
         LocalDateTime updatedAt) {
 
@@ -26,6 +28,9 @@ public record ItemResponse(
                 item.getStock(),
                 item.getImageData() != null && item.getImageData().length > 0,
                 item.getContentType(),
+                item.getCustomFieldValues() != null
+                        ? item.getCustomFieldValues()
+                        : Map.of(),
                 item.getCreatedAt(),
                 item.getUpdatedAt());
     }

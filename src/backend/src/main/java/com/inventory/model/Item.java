@@ -1,13 +1,16 @@
 package com.inventory.model;
 
+import io.hypersistence.utils.hibernate.type.json.JsonType;
 import jakarta.persistence.*;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
 import lombok.ToString;
+import org.hibernate.annotations.Type;
 
 import java.time.LocalDateTime;
+import java.util.Map;
 import java.util.UUID;
 
 import com.inventory.enums.ItemStatus;
@@ -41,6 +44,10 @@ public class Item {
 
     @Column(nullable = false)
     private Integer stock = 0;
+
+    @Type(JsonType.class)
+    @Column(name = "custom_field_values", columnDefinition = "json")
+    private Map<String, Object> customFieldValues;
 
     @Lob
     @Column(name = "image_data")

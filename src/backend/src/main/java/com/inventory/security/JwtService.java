@@ -58,8 +58,4 @@ public class JwtService {
     public UUID getUserIdFromToken(String token) {
         return UUID.fromString(parseToken(token).getSubject());
     }
-
-    public long getExpirationMs() {
-        return jwtExpirationMs;
-    }
 }

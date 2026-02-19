@@ -1,5 +1,6 @@
 package com.inventory.dto.response;
 
+import com.inventory.dto.CustomFieldDefinition;
 import com.inventory.model.ItemList;
 import org.hibernate.Hibernate;
 
@@ -14,6 +15,7 @@ public record ItemListResponse(
         String category,
         int itemCount,
         List<ItemResponse> items,
+        List<CustomFieldDefinition> customFieldDefinitions,
         LocalDateTime createdAt,
         LocalDateTime updatedAt
 ) {
@@ -33,6 +35,9 @@ public record ItemListResponse(
                 itemList.getCategory(),
                 count,
                 itemResponses,
+                itemList.getCustomFieldDefinitions() != null
+                        ? itemList.getCustomFieldDefinitions()
+                        : List.of(),
                 itemList.getCreatedAt(),
                 itemList.getUpdatedAt()
         );
@@ -44,8 +49,11 @@ public record ItemListResponse(
                 itemList.getName(),
                 itemList.getDescription(),
                 itemList.getCategory(),
-                0, // Don't access lazy collection - use fetch with items for accurate count
+                0,
                 List.of(),
+                itemList.getCustomFieldDefinitions() != null
+                        ? itemList.getCustomFieldDefinitions()
+                        : List.of(),
                 itemList.getCreatedAt(),
                 itemList.getUpdatedAt()
         );

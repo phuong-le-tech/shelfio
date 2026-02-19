@@ -80,7 +80,7 @@ class ItemControllerIntegrationTest {
         @Test
         @DisplayName("should create item and retrieve it")
         void createAndRetrieveItem_fullFlow() throws Exception {
-            ItemRequest request = new ItemRequest("Integration Test Item", testList.getId(), ItemStatus.TO_PREPARE, 5);
+            ItemRequest request = new ItemRequest("Integration Test Item", testList.getId(), ItemStatus.TO_PREPARE, 5, null);
 
             String jsonData = objectMapper.writeValueAsString(request);
 
@@ -107,7 +107,7 @@ class ItemControllerIntegrationTest {
         @Test
         @DisplayName("should create item with image")
         void createItemWithImage_fullFlow() throws Exception {
-            ItemRequest request = new ItemRequest("Item With Image", testList.getId(), ItemStatus.TO_PREPARE, 10);
+            ItemRequest request = new ItemRequest("Item With Image", testList.getId(), ItemStatus.TO_PREPARE, 10, null);
 
             String jsonData = objectMapper.writeValueAsString(request);
             MockMultipartFile imagePart = new MockMultipartFile(
@@ -136,7 +136,7 @@ class ItemControllerIntegrationTest {
         void updateItem_fullFlow() throws Exception {
             Item item = createTestItem("Original Name", testList, ItemStatus.TO_PREPARE, 5);
 
-            ItemRequest updateRequest = new ItemRequest("Updated Name", testList.getId(), ItemStatus.READY, 15);
+            ItemRequest updateRequest = new ItemRequest("Updated Name", testList.getId(), ItemStatus.READY, 15, null);
             String jsonData = objectMapper.writeValueAsString(updateRequest);
 
             mockMvc.perform(multipart("/api/v1/items/{id}", item.getId())

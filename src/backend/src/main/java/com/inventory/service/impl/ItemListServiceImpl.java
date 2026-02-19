@@ -8,6 +8,7 @@ import com.inventory.model.User;
 import com.inventory.repository.ItemListRepository;
 import com.inventory.repository.UserRepository;
 import com.inventory.security.SecurityUtils;
+import com.inventory.service.CustomFieldValidator;
 import com.inventory.service.IItemListService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
@@ -25,6 +26,7 @@ public class ItemListServiceImpl implements IItemListService {
     private final ItemListRepository itemListRepository;
     private final UserRepository userRepository;
     private final SecurityUtils securityUtils;
+    private final CustomFieldValidator customFieldValidator;
 
     @Override
     @Transactional(readOnly = true)
@@ -58,10 +60,13 @@ public class ItemListServiceImpl implements IItemListService {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new UnauthorizedException("User not found"));
 
+        customFieldValidator.validateDefinitionNames(request.customFieldDefinitions());
+
         ItemList itemList = new ItemList();
         itemList.setName(request.name());
         itemList.setDescription(request.description());
         itemList.setCategory(request.category());
+        itemList.setCustomFieldDefinitions(request.customFieldDefinitions());
         itemList.setUser(user);
         return itemListRepository.save(itemList);
     }
@@ -69,10 +74,13 @@ public class ItemListServiceImpl implements IItemListService {
     @Override
     @Transactional
     public ItemList updateList(@NonNull UUID id, @NonNull ItemListRequest request) {
+        customFieldValidator.validateDefinitionNames(request.customFieldDefinitions());
+
         ItemList itemList = getListById(id);
         itemList.setName(request.name());
         itemList.setDescription(request.description());
         itemList.setCategory(request.category());
+        itemList.setCustomFieldDefinitions(request.customFieldDefinitions());
         return itemListRepository.save(itemList);
     }
 

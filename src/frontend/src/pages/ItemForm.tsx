@@ -1,9 +1,9 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useMemo } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
 import { ArrowLeft, Upload, AlertCircle } from 'lucide-react';
 import { itemsApi, listsApi } from '../services/api';
-import { ItemFormData, STATUS_OPTIONS, STATUS_LABELS, ItemList, getItemImageUrl } from '../types/item';
+import { ItemFormData, STATUS_OPTIONS, STATUS_LABELS, ItemList, getItemImageUrl, CustomFieldDefinition, FIELD_TYPE_LABELS, CustomFieldType } from '../types/item';
 import { Skeleton, SkeletonText } from '../components/Skeleton';
 import { useToast } from '../components/Toast';
 
@@ -21,8 +21,9 @@ export default function ItemForm() {
   const [imageFile, setImageFile] = useState<File | null>(null);
   const [imagePreview, setImagePreview] = useState<string | null>(null);
   const [lists, setLists] = useState<ItemList[]>([]);
+  const [customValues, setCustomValues] = useState<Record<string, unknown>>({});
 
-  const { register, handleSubmit, reset, formState: { errors } } = useForm<ItemFormData>({
+  const { register, handleSubmit, reset, watch, formState: { errors } } = useForm<ItemFormData>({
     defaultValues: {
       name: '',
       itemListId: listId || '',
@@ -30,6 +31,14 @@ export default function ItemForm() {
       stock: 0,
     },
   });
+
+  const selectedListId = watch('itemListId');
+
+  const fieldDefs = useMemo<CustomFieldDefinition[]>(() => {
+    const selectedList = lists.find((l) => l.id === selectedListId);
+    const defs = selectedList?.customFieldDefinitions || [];
+    return [...defs].sort((a, b) => a.displayOrder - b.displayOrder);
+  }, [lists, selectedListId]);
 
   useEffect(() => {
     loadLists();
@@ -42,6 +51,13 @@ export default function ItemForm() {
       setLoading(false);
     }
   }, [itemId, isEditing, lists]);
+
+  // Reset custom values when switching lists (only for new items)
+  useEffect(() => {
+    if (!isEditing && selectedListId) {
+      setCustomValues({});
+    }
+  }, [selectedListId, isEditing]);
 
   const loadLists = async () => {
     try {
@@ -62,6 +78,7 @@ export default function ItemForm() {
         status: item.status,
         stock: item.stock,
       });
+      setCustomValues(item.customFieldValues || {});
       if (item.hasImage) {
         setImagePreview(getItemImageUrl(item.id));
       }
@@ -94,14 +111,34 @@ export default function ItemForm() {
     }
   };
 
+  const handleCustomFieldChange = (name: string, type: CustomFieldType, rawValue: string | boolean) => {
+    setCustomValues((prev) => {
+      const next = { ...prev };
+      if (type === 'NUMBER') {
+        const num = parseFloat(rawValue as string);
+        next[name] = isNaN(num) ? null : num;
+      } else if (type === 'BOOLEAN') {
+        next[name] = rawValue as boolean;
+      } else {
+        next[name] = rawValue;
+      }
+      return next;
+    });
+  };
+
   const onSubmit = async (data: ItemFormData) => {
     setSubmitting(true);
     try {
+      const payload: ItemFormData = {
+        ...data,
+        customFieldValues: fieldDefs.length > 0 ? customValues : undefined,
+      };
+
       if (isEditing && itemId) {
-        await itemsApi.update(itemId, data, imageFile || undefined);
+        await itemsApi.update(itemId, payload, imageFile || undefined);
         showToast('Article mis à jour avec succès', 'success');
       } else {
-        await itemsApi.create(data, imageFile || undefined);
+        await itemsApi.create(payload, imageFile || undefined);
         showToast('Article créé avec succès', 'success');
       }
       navigate(`/lists/${data.itemListId}`);
@@ -235,6 +272,66 @@ export default function ItemForm() {
               ))}
             </select>
           </div>
+
+          {/* Custom Fields */}
+          {fieldDefs.length > 0 && (
+            <div className="space-y-4 pt-2">
+              <div className="border-t border-white/[0.06] pt-4">
+                <p className="text-xs font-medium text-stone-400 mb-4 uppercase tracking-wider">
+                  Champs personnalisés
+                </p>
+              </div>
+              {fieldDefs.map((def) => (
+                <div key={def.name}>
+                  <label className="block text-xs font-medium text-stone-400 mb-2 uppercase tracking-wider">
+                    {def.label} {def.required && '*'} <span className="text-stone-600 normal-case">({FIELD_TYPE_LABELS[def.type]})</span>
+                  </label>
+
+                  {def.type === 'TEXT' && (
+                    <input
+                      type="text"
+                      value={(customValues[def.name] as string) || ''}
+                      onChange={(e) => handleCustomFieldChange(def.name, def.type, e.target.value)}
+                      className="w-full px-4 py-3 bg-surface-base/50 border border-white/[0.08] rounded-xl text-stone-100 placeholder-stone-500 transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-amber-500/30 focus:border-amber-500/40 hover:border-white/[0.12]"
+                      placeholder={`Entrez ${def.label.toLowerCase()}`}
+                    />
+                  )}
+
+                  {def.type === 'NUMBER' && (
+                    <input
+                      type="number"
+                      step="any"
+                      value={customValues[def.name] != null ? String(customValues[def.name]) : ''}
+                      onChange={(e) => handleCustomFieldChange(def.name, def.type, e.target.value)}
+                      className="w-full px-4 py-3 bg-surface-base/50 border border-white/[0.08] rounded-xl text-stone-100 placeholder-stone-500 transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-amber-500/30 focus:border-amber-500/40 hover:border-white/[0.12]"
+                      placeholder="0"
+                    />
+                  )}
+
+                  {def.type === 'DATE' && (
+                    <input
+                      type="date"
+                      value={(customValues[def.name] as string) || ''}
+                      onChange={(e) => handleCustomFieldChange(def.name, def.type, e.target.value)}
+                      className="w-full px-4 py-3 bg-surface-base/50 border border-white/[0.08] rounded-xl text-stone-100 placeholder-stone-500 transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-amber-500/30 focus:border-amber-500/40 hover:border-white/[0.12]"
+                    />
+                  )}
+
+                  {def.type === 'BOOLEAN' && (
+                    <label className="flex items-center gap-3 px-4 py-3 bg-surface-base/50 border border-white/[0.08] rounded-xl transition-all duration-200 hover:border-white/[0.12] cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={(customValues[def.name] as boolean) || false}
+                        onChange={(e) => handleCustomFieldChange(def.name, def.type, e.target.checked)}
+                        className="rounded border-white/[0.15] bg-surface-base/50 text-amber-500 focus:ring-amber-500/30 focus:ring-offset-0"
+                      />
+                      <span className="text-stone-300 text-sm">{def.label}</span>
+                    </label>
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
 
           <div>
             <label className="block text-xs font-medium text-stone-400 mb-2 uppercase tracking-wider">

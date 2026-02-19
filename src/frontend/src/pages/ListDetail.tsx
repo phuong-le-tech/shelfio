@@ -2,7 +2,7 @@ import { useEffect, useState, useCallback } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { ArrowLeft, Plus, Pencil, Trash2, Package, List } from 'lucide-react';
 import { listsApi, itemsApi } from '../services/api';
-import { ItemListWithItems, Item, formatStatus, STATUS_OPTIONS, STATUS_LABELS, getItemImageUrl } from '../types/item';
+import { ItemListWithItems, Item, formatStatus, STATUS_OPTIONS, STATUS_LABELS, getItemImageUrl, formatCustomFieldValue } from '../types/item';
 import { SkeletonCard, SkeletonText, Skeleton } from '../components/Skeleton';
 import { useToast } from '../components/Toast';
 
@@ -196,9 +196,25 @@ export default function ListDetail() {
                   {formatStatus(item.status)}
                 </span>
               </div>
-              <p className="text-stone-400 text-sm mb-4">
+              <p className="text-stone-400 text-sm mb-2">
                 <span className="font-medium">Stock:</span> {item.stock}
               </p>
+              {list.customFieldDefinitions && list.customFieldDefinitions.length > 0 && (
+                <div className="space-y-1 mb-3">
+                  {[...list.customFieldDefinitions]
+                    .sort((a, b) => a.displayOrder - b.displayOrder)
+                    .map((def) => {
+                      const value = item.customFieldValues?.[def.name];
+                      if (value === undefined || value === null || value === '') return null;
+                      return (
+                        <p key={def.name} className="text-stone-400 text-sm">
+                          <span className="font-medium">{def.label}:</span>{' '}
+                          {formatCustomFieldValue(def.type, value)}
+                        </p>
+                      );
+                    })}
+                </div>
+              )}
               <div className="flex gap-2">
                 <Link
                   to={`/lists/${id}/items/${item.id}/edit`}

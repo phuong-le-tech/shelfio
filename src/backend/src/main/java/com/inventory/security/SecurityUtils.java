@@ -21,17 +21,6 @@ public class SecurityUtils {
         return Optional.empty();
     }
 
-    public Optional<CustomUserDetails> getCurrentUser() {
-        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
-        if (authentication == null || !authentication.isAuthenticated()) {
-            return Optional.empty();
-        }
-        if (authentication.getPrincipal() instanceof CustomUserDetails userDetails) {
-            return Optional.of(userDetails);
-        }
-        return Optional.empty();
-    }
-
     public boolean isAdmin() {
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
         if (authentication == null) {

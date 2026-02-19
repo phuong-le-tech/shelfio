@@ -143,7 +143,7 @@ class ItemControllerTest {
         @Test
         @DisplayName("should create item with valid request")
         void createItem_validRequest_returns201() throws Exception {
-            ItemRequest request = new ItemRequest("New Item", testListId, ItemStatus.TO_PREPARE, 5);
+            ItemRequest request = new ItemRequest("New Item", testListId, ItemStatus.TO_PREPARE, 5, null);
             when(itemService.createItem(any(ItemRequest.class), any())).thenReturn(testItem);
 
             String jsonData = objectMapper.writeValueAsString(request);
@@ -157,7 +157,7 @@ class ItemControllerTest {
         @Test
         @DisplayName("should create item with image")
         void createItem_withImage_returns201() throws Exception {
-            ItemRequest request = new ItemRequest("New Item", testListId, ItemStatus.TO_PREPARE, 10);
+            ItemRequest request = new ItemRequest("New Item", testListId, ItemStatus.TO_PREPARE, 10, null);
             when(itemService.createItem(any(ItemRequest.class), any())).thenReturn(testItem);
 
             String jsonData = objectMapper.writeValueAsString(request);
@@ -178,7 +178,7 @@ class ItemControllerTest {
         @Test
         @DisplayName("should update existing item")
         void updateItem_existingId_returnsUpdatedItem() throws Exception {
-            ItemRequest request = new ItemRequest("Updated Item", testListId, ItemStatus.READY, 20);
+            ItemRequest request = new ItemRequest("Updated Item", testListId, ItemStatus.READY, 20, null);
             Item updatedItem = new Item();
             updatedItem.setId(testId);
             updatedItem.setName("Updated Item");

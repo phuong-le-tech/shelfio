@@ -1,10 +1,13 @@
 package com.inventory.model;
 
+import com.inventory.dto.CustomFieldDefinition;
+import io.hypersistence.utils.hibernate.type.json.JsonType;
 import jakarta.persistence.*;
 import jakarta.validation.constraints.NotBlank;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
 import lombok.ToString;
+import org.hibernate.annotations.Type;
 
 import java.time.LocalDateTime;
 import java.util.ArrayList;
@@ -32,6 +35,10 @@ public class ItemList {
 
     private String category;
 
+    @Type(JsonType.class)
+    @Column(name = "custom_field_definitions", columnDefinition = "json")
+    private List<CustomFieldDefinition> customFieldDefinitions;
+
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "user_id", nullable = false)
     @ToString.Exclude
@@ -58,15 +65,5 @@ public class ItemList {
     @PreUpdate
     protected void onUpdate() {
         updatedAt = LocalDateTime.now();
-    }
-
-    public void addItem(Item item) {
-        items.add(item);
-        item.setItemList(this);
-    }
-
-    public void removeItem(Item item) {
-        items.remove(item);
-        item.setItemList(null);
     }
 }

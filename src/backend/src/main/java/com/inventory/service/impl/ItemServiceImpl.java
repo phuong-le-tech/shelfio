@@ -12,6 +12,7 @@ import com.inventory.model.ItemList;
 import com.inventory.repository.ItemListRepository;
 import com.inventory.repository.ItemRepository;
 import com.inventory.repository.specification.ItemSpecification;
+import com.inventory.service.CustomFieldValidator;
 import com.inventory.service.IItemService;
 
 import org.springframework.lang.NonNull;
@@ -37,10 +38,13 @@ public class ItemServiceImpl implements IItemService {
 
     private final ItemRepository itemRepository;
     private final ItemListRepository itemListRepository;
+    private final CustomFieldValidator customFieldValidator;
 
-    public ItemServiceImpl(ItemRepository itemRepository, ItemListRepository itemListRepository) {
+    public ItemServiceImpl(ItemRepository itemRepository, ItemListRepository itemListRepository,
+                           CustomFieldValidator customFieldValidator) {
         this.itemRepository = itemRepository;
         this.itemListRepository = itemListRepository;
+        this.customFieldValidator = customFieldValidator;
     }
 
     @Override
@@ -63,11 +67,14 @@ public class ItemServiceImpl implements IItemService {
         ItemList itemList = itemListRepository.findById(request.itemListId())
                 .orElseThrow(() -> new ItemListNotFoundException(request.itemListId()));
 
+        customFieldValidator.validate(itemList.getCustomFieldDefinitions(), request.customFieldValues());
+
         Item item = new Item();
         item.setName(request.name());
         item.setItemList(itemList);
         item.setStatus(request.status() != null ? request.status() : ItemStatus.TO_PREPARE);
         item.setStock(request.stock() != null ? request.stock() : 0);
+        item.setCustomFieldValues(request.customFieldValues());
 
         if (image != null && !image.isEmpty()) {
             validateImage(image);
@@ -86,10 +93,13 @@ public class ItemServiceImpl implements IItemService {
         ItemList itemList = itemListRepository.findById(request.itemListId())
                 .orElseThrow(() -> new ItemListNotFoundException(request.itemListId()));
 
+        customFieldValidator.validate(itemList.getCustomFieldDefinitions(), request.customFieldValues());
+
         item.setName(request.name());
         item.setItemList(itemList);
         item.setStatus(request.status() != null ? request.status() : item.getStatus());
         item.setStock(request.stock() != null ? request.stock() : item.getStock());
+        item.setCustomFieldValues(request.customFieldValues());
 
         if (image != null && !image.isEmpty()) {
             validateImage(image);
