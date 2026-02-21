@@ -1,11 +1,13 @@
 import { useState } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
+import { useForm } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
+import { AlertCircle } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
+import { loginSchema, LoginFormData } from '../schemas/auth.schemas';
 
 export function LoginPage() {
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
-  const [error, setError] = useState('');
+  const [serverError, setServerError] = useState('');
   const [loading, setLoading] = useState(false);
 
   const { login, loginWithGoogle } = useAuth();
@@ -14,19 +16,25 @@ export function LoginPage() {
 
   const from = (location.state as { from?: { pathname: string } })?.from?.pathname || '/';
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setError('');
-    setLoading(true);
+  const {
+    register,
+    handleSubmit,
+    formState: { errors },
+  } = useForm<LoginFormData>({ resolver: zodResolver(loginSchema) });
 
+  const onSubmit = async (data: LoginFormData) => {
+    setServerError('');
+    setLoading(true);
     try {
-      await login({ email, password });
+      await login(data);
       navigate(from, { replace: true });
     } catch (err: unknown) {
-      const errorMessage = err instanceof Error
-        ? err.message
-        : (err as { response?: { data?: { error?: { message?: string } } } })?.response?.data?.error?.message || 'Invalid email or password';
-      setError(errorMessage);
+      const errorMessage =
+        err instanceof Error
+          ? err.message
+          : (err as { response?: { data?: { error?: { message?: string } } } })?.response?.data
+              ?.error?.message || 'Invalid email or password';
+      setServerError(errorMessage);
     } finally {
       setLoading(false);
     }
@@ -46,10 +54,10 @@ export function LoginPage() {
         </div>
 
         <div className="bg-surface-card rounded-2xl p-8 shadow-premium border border-white/5">
-          <form onSubmit={handleSubmit} className="space-y-6">
-            {error && (
+          <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
+            {serverError && (
               <div className="bg-red-500/10 border border-red-500/20 rounded-lg px-4 py-3 text-red-400 text-sm">
-                {error}
+                {serverError}
               </div>
             )}
 
@@ -60,12 +68,20 @@ export function LoginPage() {
               <input
                 id="email"
                 type="email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                required
-                className="w-full px-4 py-3 bg-surface-elevated border border-white/10 rounded-lg text-stone-100 placeholder-stone-500 focus:outline-none focus:ring-2 focus:ring-accent/50 focus:border-accent transition-colors"
+                {...register('email')}
+                className={`w-full px-4 py-3 bg-surface-elevated border rounded-lg text-stone-100 placeholder-stone-500 focus:outline-none focus:ring-2 transition-colors ${
+                  errors.email
+                    ? 'border-red-400/40 focus:ring-red-400/30 focus:border-red-400/50'
+                    : 'border-white/10 focus:ring-accent/50 focus:border-accent'
+                }`}
                 placeholder="you@example.com"
               />
+              {errors.email && (
+                <p className="mt-2 text-sm text-red-400 flex items-center gap-1.5">
+                  <AlertCircle className="h-4 w-4 flex-shrink-0" />
+                  {errors.email.message}
+                </p>
+              )}
             </div>
 
             <div>
@@ -75,12 +91,20 @@ export function LoginPage() {
               <input
                 id="password"
                 type="password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                required
-                className="w-full px-4 py-3 bg-surface-elevated border border-white/10 rounded-lg text-stone-100 placeholder-stone-500 focus:outline-none focus:ring-2 focus:ring-accent/50 focus:border-accent transition-colors"
+                {...register('password')}
+                className={`w-full px-4 py-3 bg-surface-elevated border rounded-lg text-stone-100 placeholder-stone-500 focus:outline-none focus:ring-2 transition-colors ${
+                  errors.password
+                    ? 'border-red-400/40 focus:ring-red-400/30 focus:border-red-400/50'
+                    : 'border-white/10 focus:ring-accent/50 focus:border-accent'
+                }`}
                 placeholder="Enter your password"
               />
+              {errors.password && (
+                <p className="mt-2 text-sm text-red-400 flex items-center gap-1.5">
+                  <AlertCircle className="h-4 w-4 flex-shrink-0" />
+                  {errors.password.message}
+                </p>
+              )}
             </div>
 
             <button

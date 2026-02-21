@@ -1,11 +1,16 @@
-import { useEffect, useState, useMemo } from 'react';
+import { useEffect, useState, useMemo, useRef, useCallback } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { useForm } from 'react-hook-form';
+import { useForm, Controller } from 'react-hook-form';
+import type { Resolver } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
 import { ArrowLeft, Upload, AlertCircle } from 'lucide-react';
+import axios from 'axios';
 import { itemsApi, listsApi } from '../services/api';
-import { ItemFormData, STATUS_OPTIONS, STATUS_LABELS, ItemList, getItemImageUrl, CustomFieldDefinition, FIELD_TYPE_LABELS, CustomFieldType } from '../types/item';
+import { ItemFormData, STATUS_OPTIONS, STATUS_LABELS, getItemImageUrl, CustomFieldDefinition, FIELD_TYPE_LABELS } from '../types/item';
+import { createItemSchema } from '../schemas/item.schemas';
 import { Skeleton, SkeletonText } from '../components/Skeleton';
 import { useToast } from '../components/Toast';
+import ListCombobox from '../components/ListCombobox';
 
 const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
 const ALLOWED_FILE_TYPES = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
@@ -16,80 +21,110 @@ export default function ItemForm() {
   const isEditing = Boolean(itemId);
   const { showToast } = useToast();
 
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(isEditing);
   const [submitting, setSubmitting] = useState(false);
   const [imageFile, setImageFile] = useState<File | null>(null);
   const [imagePreview, setImagePreview] = useState<string | null>(null);
-  const [lists, setLists] = useState<ItemList[]>([]);
-  const [customValues, setCustomValues] = useState<Record<string, unknown>>({});
+  const [selectedListDefs, setSelectedListDefs] = useState<CustomFieldDefinition[]>([]);
 
-  const { register, handleSubmit, reset, watch, formState: { errors } } = useForm<ItemFormData>({
+  // Stable resolver that always delegates to the current schema — allows dynamic
+  // custom field validation without recreating the form instance.
+  const schemaRef = useRef(createItemSchema([]));
+  const resolver = useCallback<Resolver<ItemFormData>>(
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    (...args) => (zodResolver(schemaRef.current) as any)(...args),
+    []
+  );
+
+  const { register, handleSubmit, reset, watch, control, setValue, formState: { errors } } = useForm<ItemFormData>({
+    resolver,
     defaultValues: {
       name: '',
       itemListId: listId || '',
       status: 'TO_PREPARE',
       stock: 0,
+      customFieldValues: {},
     },
   });
 
   const selectedListId = watch('itemListId');
 
   const fieldDefs = useMemo<CustomFieldDefinition[]>(() => {
-    const selectedList = lists.find((l) => l.id === selectedListId);
-    const defs = selectedList?.customFieldDefinitions || [];
-    return [...defs].sort((a, b) => a.displayOrder - b.displayOrder);
-  }, [lists, selectedListId]);
+    return [...selectedListDefs].sort((a, b) => a.displayOrder - b.displayOrder);
+  }, [selectedListDefs]);
 
+  // Keep schema in sync with current field definitions so superRefine validates correctly
   useEffect(() => {
-    loadLists();
-  }, []);
+    schemaRef.current = createItemSchema(fieldDefs);
+  }, [fieldDefs]);
 
+  // Load item data in edit mode
   useEffect(() => {
-    if (isEditing && itemId) {
-      loadItem(itemId);
-    } else if (lists.length > 0) {
+    if (!isEditing || !itemId) {
       setLoading(false);
+      return;
     }
-  }, [itemId, isEditing, lists]);
+    const controller = new AbortController();
 
-  // Reset custom values when switching lists (only for new items)
-  useEffect(() => {
-    if (!isEditing && selectedListId) {
-      setCustomValues({});
-    }
-  }, [selectedListId, isEditing]);
-
-  const loadLists = async () => {
-    try {
-      const response = await listsApi.getAll({ size: 100 });
-      setLists(response.content);
-    } catch (error) {
-      console.error('Failed to load lists:', error);
-      showToast('Échec du chargement des listes', 'error');
-    }
-  };
-
-  const loadItem = async (id: string) => {
-    try {
-      const item = await itemsApi.getById(id);
-      reset({
-        name: item.name,
-        itemListId: item.itemListId,
-        status: item.status,
-        stock: item.stock,
-      });
-      setCustomValues(item.customFieldValues || {});
-      if (item.hasImage) {
-        setImagePreview(getItemImageUrl(item.id));
+    const load = async () => {
+      try {
+        const item = await itemsApi.getById(itemId, controller.signal);
+        if (!controller.signal.aborted) {
+          reset({
+            name: item.name,
+            itemListId: item.itemListId,
+            status: item.status,
+            stock: item.stock,
+            customFieldValues: item.customFieldValues || {},
+          });
+          if (item.hasImage) {
+            setImagePreview(getItemImageUrl(item.id));
+          }
+        }
+      } catch (err) {
+        if (!axios.isCancel(err) && !controller.signal.aborted) {
+          console.error('Failed to load item:', err);
+          showToast("Échec du chargement de l'article", 'error');
+          navigate(listId ? `/lists/${listId}` : '/lists');
+        }
+      } finally {
+        if (!controller.signal.aborted) {
+          setLoading(false);
+        }
       }
-    } catch (error) {
-      console.error('Failed to load item:', error);
-      showToast('Échec du chargement de l\'article', 'error');
-      navigate(listId ? `/lists/${listId}` : '/lists');
-    } finally {
-      setLoading(false);
+    };
+
+    load();
+    return () => controller.abort();
+  }, [itemId, isEditing, reset, navigate, listId, showToast]);
+
+  // Fetch custom field definitions whenever the selected list changes
+  useEffect(() => {
+    if (!selectedListId) {
+      setSelectedListDefs([]);
+      return;
     }
-  };
+    const controller = new AbortController();
+
+    listsApi.getById(selectedListId, controller.signal)
+      .then((list) => {
+        if (!controller.signal.aborted) {
+          setSelectedListDefs(list.customFieldDefinitions || []);
+        }
+      })
+      .catch(() => {
+        if (!controller.signal.aborted) setSelectedListDefs([]);
+      });
+
+    return () => controller.abort();
+  }, [selectedListId]);
+
+  // Reset custom field values when switching lists in create mode
+  useEffect(() => {
+    if (!isEditing) {
+      setValue('customFieldValues', {});
+    }
+  }, [selectedListId, isEditing, setValue]);
 
   const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -111,27 +146,12 @@ export default function ItemForm() {
     }
   };
 
-  const handleCustomFieldChange = (name: string, type: CustomFieldType, rawValue: string | boolean) => {
-    setCustomValues((prev) => {
-      const next = { ...prev };
-      if (type === 'NUMBER') {
-        const num = parseFloat(rawValue as string);
-        next[name] = isNaN(num) ? null : num;
-      } else if (type === 'BOOLEAN') {
-        next[name] = rawValue as boolean;
-      } else {
-        next[name] = rawValue;
-      }
-      return next;
-    });
-  };
-
   const onSubmit = async (data: ItemFormData) => {
     setSubmitting(true);
     try {
       const payload: ItemFormData = {
         ...data,
-        customFieldValues: fieldDefs.length > 0 ? customValues : undefined,
+        customFieldValues: fieldDefs.length > 0 ? data.customFieldValues : undefined,
       };
 
       if (isEditing && itemId) {
@@ -144,7 +164,7 @@ export default function ItemForm() {
       navigate(`/lists/${data.itemListId}`);
     } catch (error) {
       console.error('Failed to save item:', error);
-      showToast('Échec de l\'enregistrement. Veuillez réessayer.', 'error');
+      showToast("Échec de l'enregistrement. Veuillez réessayer.", 'error');
     } finally {
       setSubmitting(false);
     }
@@ -185,17 +205,18 @@ export default function ItemForm() {
 
       <div className="bg-gradient-to-br from-surface-elevated/80 to-surface-card/80 backdrop-blur-xl rounded-2xl border border-white/[0.06] shadow-premium p-8">
         <h1 className="font-display text-3xl text-stone-100 mb-8 tracking-tight">
-          {isEditing ? 'Modifier l\'article' : 'Ajouter un article'}
+          {isEditing ? "Modifier l'article" : 'Ajouter un article'}
         </h1>
 
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
           <div>
-            <label className="block text-xs font-medium text-stone-400 mb-2 uppercase tracking-wider">
+            <label htmlFor="item-name" className="block text-xs font-medium text-stone-400 mb-2 uppercase tracking-wider">
               Nom *
             </label>
             <input
+              id="item-name"
               type="text"
-              {...register('name', { required: 'Le nom est requis' })}
+              {...register('name')}
               className={`w-full px-4 py-3 bg-surface-base/50 border rounded-xl text-stone-100 placeholder-stone-500 transition-all duration-200 focus:outline-none focus:ring-2 hover:border-white/[0.12] ${
                 errors.name
                   ? 'border-red-400/40 focus:ring-red-400/30 focus:border-red-400/50'
@@ -215,19 +236,17 @@ export default function ItemForm() {
             <label className="block text-xs font-medium text-stone-400 mb-2 uppercase tracking-wider">
               Liste *
             </label>
-            <select
-              {...register('itemListId', { required: 'La liste est requise' })}
-              className={`w-full px-4 py-3 bg-surface-base/50 border rounded-xl text-stone-100 cursor-pointer transition-all duration-200 focus:outline-none focus:ring-2 hover:border-white/[0.12] ${
-                errors.itemListId
-                  ? 'border-red-400/40 focus:ring-red-400/30 focus:border-red-400/50'
-                  : 'border-white/[0.08] focus:ring-amber-500/30 focus:border-amber-500/40'
-              }`}
-            >
-              <option value="">Sélectionnez une liste</option>
-              {lists.map((list) => (
-                <option key={list.id} value={list.id}>{list.name}</option>
-              ))}
-            </select>
+            <Controller
+              name="itemListId"
+              control={control}
+              render={({ field }) => (
+                <ListCombobox
+                  value={field.value}
+                  onChange={field.onChange}
+                  error={Boolean(errors.itemListId)}
+                />
+              )}
+            />
             {errors.itemListId && (
               <p className="mt-2 text-sm text-red-400 flex items-center">
                 <AlertCircle className="h-4 w-4 mr-1.5" />
@@ -237,13 +256,14 @@ export default function ItemForm() {
           </div>
 
           <div>
-            <label className="block text-xs font-medium text-stone-400 mb-2 uppercase tracking-wider">
+            <label htmlFor="item-stock" className="block text-xs font-medium text-stone-400 mb-2 uppercase tracking-wider">
               Stock
             </label>
             <input
+              id="item-stock"
               type="number"
               min="0"
-              {...register('stock', { valueAsNumber: true, min: { value: 0, message: 'Le stock ne peut pas être négatif' } })}
+              {...register('stock', { valueAsNumber: true })}
               className={`w-full px-4 py-3 bg-surface-base/50 border rounded-xl text-stone-100 placeholder-stone-500 transition-all duration-200 focus:outline-none focus:ring-2 hover:border-white/[0.12] ${
                 errors.stock
                   ? 'border-red-400/40 focus:ring-red-400/30 focus:border-red-400/50'
@@ -260,10 +280,11 @@ export default function ItemForm() {
           </div>
 
           <div>
-            <label className="block text-xs font-medium text-stone-400 mb-2 uppercase tracking-wider">
+            <label htmlFor="item-status" className="block text-xs font-medium text-stone-400 mb-2 uppercase tracking-wider">
               Statut
             </label>
             <select
+              id="item-status"
               {...register('status')}
               className="w-full px-4 py-3 bg-surface-base/50 border border-white/[0.08] rounded-xl text-stone-100 cursor-pointer transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-amber-500/30 focus:border-amber-500/40 hover:border-white/[0.12]"
             >
@@ -273,7 +294,7 @@ export default function ItemForm() {
             </select>
           </div>
 
-          {/* Custom Fields */}
+          {/* Custom Fields — fully managed by React Hook Form */}
           {fieldDefs.length > 0 && (
             <div className="space-y-4 pt-2">
               <div className="border-t border-white/[0.06] pt-4">
@@ -281,55 +302,103 @@ export default function ItemForm() {
                   Champs personnalisés
                 </p>
               </div>
-              {fieldDefs.map((def) => (
-                <div key={def.name}>
-                  <label className="block text-xs font-medium text-stone-400 mb-2 uppercase tracking-wider">
-                    {def.label} {def.required && '*'} <span className="text-stone-600 normal-case">({FIELD_TYPE_LABELS[def.type]})</span>
-                  </label>
+              {fieldDefs.map((def) => {
+                // Cast is safe: ItemFormData.customFieldValues is Record<string, unknown>
+                const fieldPath = `customFieldValues.${def.name}` as `customFieldValues.${string}`;
+                const fieldId = `custom-field-${def.name}`;
+                const customErrors = errors.customFieldValues as Record<string, { message?: string }> | undefined;
+                const fieldError = customErrors?.[def.name];
 
-                  {def.type === 'TEXT' && (
-                    <input
-                      type="text"
-                      value={(customValues[def.name] as string) || ''}
-                      onChange={(e) => handleCustomFieldChange(def.name, def.type, e.target.value)}
-                      className="w-full px-4 py-3 bg-surface-base/50 border border-white/[0.08] rounded-xl text-stone-100 placeholder-stone-500 transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-amber-500/30 focus:border-amber-500/40 hover:border-white/[0.12]"
-                      placeholder={`Entrez ${def.label.toLowerCase()}`}
-                    />
-                  )}
-
-                  {def.type === 'NUMBER' && (
-                    <input
-                      type="number"
-                      step="any"
-                      value={customValues[def.name] != null ? String(customValues[def.name]) : ''}
-                      onChange={(e) => handleCustomFieldChange(def.name, def.type, e.target.value)}
-                      className="w-full px-4 py-3 bg-surface-base/50 border border-white/[0.08] rounded-xl text-stone-100 placeholder-stone-500 transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-amber-500/30 focus:border-amber-500/40 hover:border-white/[0.12]"
-                      placeholder="0"
-                    />
-                  )}
-
-                  {def.type === 'DATE' && (
-                    <input
-                      type="date"
-                      value={(customValues[def.name] as string) || ''}
-                      onChange={(e) => handleCustomFieldChange(def.name, def.type, e.target.value)}
-                      className="w-full px-4 py-3 bg-surface-base/50 border border-white/[0.08] rounded-xl text-stone-100 placeholder-stone-500 transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-amber-500/30 focus:border-amber-500/40 hover:border-white/[0.12]"
-                    />
-                  )}
-
-                  {def.type === 'BOOLEAN' && (
-                    <label className="flex items-center gap-3 px-4 py-3 bg-surface-base/50 border border-white/[0.08] rounded-xl transition-all duration-200 hover:border-white/[0.12] cursor-pointer">
-                      <input
-                        type="checkbox"
-                        checked={(customValues[def.name] as boolean) || false}
-                        onChange={(e) => handleCustomFieldChange(def.name, def.type, e.target.checked)}
-                        className="rounded border-white/[0.15] bg-surface-base/50 text-amber-500 focus:ring-amber-500/30 focus:ring-offset-0"
-                      />
-                      <span className="text-stone-300 text-sm">{def.label}</span>
+                return (
+                  <div key={def.name}>
+                    <label
+                      htmlFor={fieldId}
+                      className="block text-xs font-medium text-stone-400 mb-2 uppercase tracking-wider"
+                    >
+                      {def.label} {def.required && '*'}{' '}
+                      <span className="text-stone-600 normal-case">({FIELD_TYPE_LABELS[def.type]})</span>
                     </label>
-                  )}
-                </div>
-              ))}
+
+                    {def.type === 'TEXT' && (
+                      <input
+                        id={fieldId}
+                        type="text"
+                        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                        {...register(fieldPath as any)}
+                        className={`w-full px-4 py-3 bg-surface-base/50 border rounded-xl text-stone-100 placeholder-stone-500 transition-all duration-200 focus:outline-none focus:ring-2 hover:border-white/[0.12] ${fieldError ? 'border-red-400/40 focus:ring-red-400/30 focus:border-red-400/50' : 'border-white/[0.08] focus:ring-amber-500/30 focus:border-amber-500/40'}`}
+                        placeholder={`Entrez ${def.label.toLowerCase()}`}
+                      />
+                    )}
+
+                    {def.type === 'NUMBER' && (
+                      <input
+                        id={fieldId}
+                        type="number"
+                        step="any"
+                        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                        {...register(fieldPath as any, { valueAsNumber: true })}
+                        className={`w-full px-4 py-3 bg-surface-base/50 border rounded-xl text-stone-100 placeholder-stone-500 transition-all duration-200 focus:outline-none focus:ring-2 hover:border-white/[0.12] ${fieldError ? 'border-red-400/40 focus:ring-red-400/30 focus:border-red-400/50' : 'border-white/[0.08] focus:ring-amber-500/30 focus:border-amber-500/40'}`}
+                        placeholder="0"
+                      />
+                    )}
+
+                    {def.type === 'DATE' && (
+                      <input
+                        id={fieldId}
+                        type="date"
+                        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                        {...register(fieldPath as any)}
+                        className={`w-full px-4 py-3 bg-surface-base/50 border rounded-xl text-stone-100 placeholder-stone-500 transition-all duration-200 focus:outline-none focus:ring-2 hover:border-white/[0.12] ${fieldError ? 'border-red-400/40 focus:ring-red-400/30 focus:border-red-400/50' : 'border-white/[0.08] focus:ring-amber-500/30 focus:border-amber-500/40'}`}
+                      />
+                    )}
+
+                    {def.type === 'BOOLEAN' && (
+                      <Controller
+                        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                        name={fieldPath as any}
+                        control={control}
+                        defaultValue={false}
+                        render={({ field }) => (
+                          <label
+                            htmlFor={fieldId}
+                            className="flex items-center gap-3 px-4 py-3 bg-surface-base/50 border border-white/[0.08] rounded-xl transition-all duration-200 hover:border-white/[0.12] cursor-pointer"
+                          >
+                            <input
+                              id={fieldId}
+                              type="checkbox"
+                              checked={Boolean(field.value)}
+                              onChange={(e) => field.onChange(e.target.checked)}
+                              className="rounded border-white/[0.15] bg-surface-base/50 text-amber-500 focus:ring-amber-500/30 focus:ring-offset-0"
+                            />
+                            <span className="text-stone-300 text-sm">{def.label}</span>
+                          </label>
+                        )}
+                      />
+                    )}
+
+                    {def.type === 'SELECT' && (
+                      <select
+                        id={fieldId}
+                        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                        {...register(fieldPath as any)}
+                        className={`w-full px-4 py-3 bg-surface-base/50 border rounded-xl text-stone-100 cursor-pointer transition-all duration-200 focus:outline-none focus:ring-2 hover:border-white/[0.12] ${fieldError ? 'border-red-400/40 focus:ring-red-400/30 focus:border-red-400/50' : 'border-white/[0.08] focus:ring-amber-500/30 focus:border-amber-500/40'}`}
+                      >
+                        <option value="">— Choisir —</option>
+                        {def.options?.map((opt) => (
+                          <option key={opt} value={opt}>{opt}</option>
+                        ))}
+                      </select>
+                    )}
+
+                    {fieldError && (
+                      <p className="mt-2 text-sm text-red-400 flex items-center">
+                        <AlertCircle className="h-4 w-4 mr-1.5" />
+                        {fieldError.message}
+                      </p>
+                    )}
+                  </div>
+                );
+              })}
             </div>
           )}
 
@@ -352,7 +421,7 @@ export default function ItemForm() {
                 )}
                 <div className="flex text-sm text-stone-400 justify-center">
                   <label className="relative cursor-pointer rounded-md font-medium text-amber-400 hover:text-amber-300 transition-colors">
-                    <span>{imagePreview ? 'Changer l\'image' : 'Télécharger une image'}</span>
+                    <span>{imagePreview ? "Changer l'image" : 'Télécharger une image'}</span>
                     <input
                       type="file"
                       accept="image/*"

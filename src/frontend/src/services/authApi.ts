@@ -1,40 +1,19 @@
-import axios from 'axios';
+import http from './http';
 import { User, LoginCredentials, AuthResponse, CreateUserRequest } from '../types/auth';
 import { PageResponse } from '../types/item';
 
-const api = axios.create({
-  baseURL: '/api/v1',
-  withCredentials: true,
-});
-
-// Unwrap Google JSON Style Guide response envelope and redirect on 401
-api.interceptors.response.use(
-  (response) => {
-    if (response.data && typeof response.data === 'object' && 'data' in response.data) {
-      response.data = response.data.data;
-    }
-    return response;
-  },
-  (error) => {
-    if (error.response?.status === 401 && !window.location.pathname.includes('/login')) {
-      window.location.href = '/login';
-    }
-    return Promise.reject(error);
-  }
-);
-
 export const authApi = {
   login: async (credentials: LoginCredentials): Promise<AuthResponse> => {
-    const response = await api.post<AuthResponse>('/auth/login', credentials);
+    const response = await http.post<AuthResponse>('/auth/login', credentials);
     return response.data;
   },
 
   logout: async (): Promise<void> => {
-    await api.post('/auth/logout');
+    await http.post('/auth/logout');
   },
 
   getCurrentUser: async (): Promise<User> => {
-    const response = await api.get<User>('/auth/me');
+    const response = await http.get<User>('/auth/me');
     return response.data;
   },
 
@@ -44,22 +23,25 @@ export const authApi = {
 };
 
 export const adminApi = {
-  getUsers: async (params: { page?: number; size?: number; sortBy?: string; sortDir?: string } = {}): Promise<PageResponse<User>> => {
-    const response = await api.get<PageResponse<User>>('/admin/users', { params });
+  getUsers: async (
+    params: { page?: number; size?: number; sortBy?: string; sortDir?: string } = {},
+    signal?: AbortSignal
+  ): Promise<PageResponse<User>> => {
+    const response = await http.get<PageResponse<User>>('/admin/users', { params, signal });
     return response.data;
   },
 
   createUser: async (data: CreateUserRequest): Promise<User> => {
-    const response = await api.post<User>('/admin/users', data);
+    const response = await http.post<User>('/admin/users', data);
     return response.data;
   },
 
   deleteUser: async (id: string): Promise<void> => {
-    await api.delete(`/admin/users/${id}`);
+    await http.delete(`/admin/users/${id}`);
   },
 
   updateUserRole: async (id: string, role: string): Promise<User> => {
-    const response = await api.patch<User>(`/admin/users/${id}/role`, { role });
+    const response = await http.patch<User>(`/admin/users/${id}/role`, { role });
     return response.data;
   },
 };

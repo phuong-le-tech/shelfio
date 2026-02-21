@@ -5,11 +5,13 @@ import { listsApi } from '../services/api';
 import { ItemList, ItemListSearchParams } from '../types/item';
 import { SkeletonCard, SkeletonText, Skeleton } from '../components/Skeleton';
 import { useToast } from '../components/Toast';
+import ConfirmModal from '../components/ConfirmModal';
 
 export default function ListsPage() {
   const [lists, setLists] = useState<ItemList[]>([]);
   const [loading, setLoading] = useState(true);
   const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [pendingDeleteId, setPendingDeleteId] = useState<string | null>(null);
   const [page, setPage] = useState(0);
   const [totalPages, setTotalPages] = useState(0);
   const [totalElements, setTotalElements] = useState(0);
@@ -41,8 +43,10 @@ export default function ListsPage() {
     loadLists();
   }, [loadLists]);
 
-  const handleDelete = async (id: string) => {
-    if (!confirm('Êtes-vous sûr de vouloir supprimer cette liste et tous ses articles ?')) return;
+  const handleDeleteConfirm = async () => {
+    if (!pendingDeleteId) return;
+    const id = pendingDeleteId;
+    setPendingDeleteId(null);
     setDeletingId(id);
     try {
       await listsApi.delete(id);
@@ -131,7 +135,7 @@ export default function ListsPage() {
                 <button
                   onClick={(e) => {
                     e.preventDefault();
-                    handleDelete(list.id);
+                    setPendingDeleteId(list.id);
                   }}
                   disabled={deletingId === list.id}
                   aria-label={`Supprimer ${list.name}`}
@@ -178,6 +182,15 @@ export default function ListsPage() {
           </button>
         </div>
       )}
+
+      <ConfirmModal
+        isOpen={pendingDeleteId !== null}
+        title="Supprimer la liste"
+        message="Êtes-vous sûr de vouloir supprimer cette liste et tous ses articles ? Cette action est irréversible."
+        confirmLabel="Supprimer"
+        onConfirm={handleDeleteConfirm}
+        onCancel={() => setPendingDeleteId(null)}
+      />
     </div>
   );
 }

@@ -1,9 +1,12 @@
 import { useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useForm, useFieldArray } from 'react-hook-form';
+import type { Resolver } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
 import { ArrowLeft, AlertCircle, Plus, Trash2 } from 'lucide-react';
 import { listsApi } from '../services/api';
 import { ItemListFormData, FIELD_TYPE_OPTIONS, FIELD_TYPE_LABELS, CustomFieldType } from '../types/item';
+import { listFormSchema } from '../schemas/item.schemas';
 import { Skeleton, SkeletonText } from '../components/Skeleton';
 import { useToast } from '../components/Toast';
 
@@ -21,6 +24,8 @@ export default function ListForm() {
   const [submitting, setSubmitting] = useState(false);
 
   const { register, handleSubmit, reset, control, formState: { errors } } = useForm<ItemListFormData>({
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    resolver: zodResolver(listFormSchema) as unknown as Resolver<ItemListFormData>,
     defaultValues: {
       name: '',
       description: '',
@@ -131,7 +136,7 @@ export default function ListForm() {
             </label>
             <input
               type="text"
-              {...register('name', { required: 'Le nom est requis' })}
+              {...register('name')}
               className={`w-full px-4 py-3 bg-surface-base/50 border rounded-xl text-stone-100 placeholder-stone-500 transition-all duration-200 focus:outline-none focus:ring-2 hover:border-white/[0.12] ${
                 errors.name
                   ? 'border-red-400/40 focus:ring-red-400/30 focus:border-red-400/50'
@@ -187,9 +192,7 @@ export default function ListForm() {
                     <div className="flex-1 min-w-0">
                       <input
                         type="text"
-                        {...register(`customFieldDefinitions.${index}.label`, {
-                          required: 'Le libellé est requis',
-                        })}
+                        {...register(`customFieldDefinitions.${index}.label`)}
                         className="w-full px-3 py-2 bg-surface-base/50 border border-white/[0.08] rounded-lg text-stone-100 placeholder-stone-500 text-sm transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-amber-500/30 focus:border-amber-500/40"
                         placeholder="Libellé du champ"
                       />

@@ -1,4 +1,4 @@
-export type CustomFieldType = 'TEXT' | 'NUMBER' | 'DATE' | 'BOOLEAN';
+export type CustomFieldType = 'TEXT' | 'NUMBER' | 'DATE' | 'BOOLEAN' | 'SELECT';
 
 export interface CustomFieldDefinition {
   name: string;
@@ -6,15 +6,17 @@ export interface CustomFieldDefinition {
   type: CustomFieldType;
   required: boolean;
   displayOrder: number;
+  options?: string[];
 }
 
-export const FIELD_TYPE_OPTIONS: CustomFieldType[] = ['TEXT', 'NUMBER', 'DATE', 'BOOLEAN'];
+export const FIELD_TYPE_OPTIONS: CustomFieldType[] = ['TEXT', 'NUMBER', 'DATE', 'BOOLEAN', 'SELECT'];
 
 export const FIELD_TYPE_LABELS: Record<CustomFieldType, string> = {
   TEXT: 'Texte',
   NUMBER: 'Nombre',
   DATE: 'Date',
   BOOLEAN: 'Oui/Non',
+  SELECT: 'Sélection',
 };
 
 export const formatCustomFieldValue = (type: CustomFieldType, value: unknown): string => {
@@ -24,6 +26,8 @@ export const formatCustomFieldValue = (type: CustomFieldType, value: unknown): s
     case 'DATE':
       return new Date(value as string).toLocaleDateString('fr-FR');
     case 'NUMBER':
+      return String(value);
+    case 'SELECT':
       return String(value);
     case 'TEXT':
     default:
@@ -109,6 +113,7 @@ export interface ItemListSearchParams {
   size?: number;
   sortBy?: string;
   sortDir?: 'asc' | 'desc';
+  search?: string;
 }
 
 export const STATUS_OPTIONS = ['TO_PREPARE', 'TO_VERIFY', 'PENDING', 'READY', 'ARCHIVED'] as const;

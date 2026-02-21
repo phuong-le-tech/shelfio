@@ -1,31 +1,10 @@
-import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { Package, Clock, CheckCircle, Search, Archive } from 'lucide-react';
-import { dashboardApi } from '../services/api';
-import { DashboardStats } from '../types/item';
+import { Package, Clock, CheckCircle, Search, Archive, Hourglass, AlertCircle, RefreshCw } from 'lucide-react';
+import { useDashboardStats } from '../hooks/useDashboardStats';
 import { SkeletonStatCard, SkeletonText, Skeleton } from '../components/Skeleton';
-import { useToast } from '../components/Toast';
 
 export default function Dashboard() {
-  const [stats, setStats] = useState<DashboardStats | null>(null);
-  const [loading, setLoading] = useState(true);
-  const { showToast } = useToast();
-
-  useEffect(() => {
-    loadStats();
-  }, []);
-
-  const loadStats = async () => {
-    try {
-      const data = await dashboardApi.getStats();
-      setStats(data);
-    } catch (error) {
-      console.error('Failed to load stats:', error);
-      showToast('Échec du chargement des statistiques', 'error');
-    } finally {
-      setLoading(false);
-    }
-  };
+  const { stats, loading, error, reload } = useDashboardStats();
 
   if (loading) {
     return (
@@ -34,8 +13,8 @@ export default function Dashboard() {
           <SkeletonText className="w-32 h-9 mb-2" />
           <SkeletonText className="w-48" />
         </div>
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6 mb-8">
-          {[...Array(5)].map((_, i) => (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-6 gap-6 mb-8">
+          {[...Array(6)].map((_, i) => (
             <SkeletonStatCard key={i} />
           ))}
         </div>
@@ -54,10 +33,32 @@ export default function Dashboard() {
     );
   }
 
+  if (error && !stats) {
+    return (
+      <div className="flex flex-col items-center justify-center py-24 text-center animate-fade-in">
+        <div className="w-16 h-16 bg-red-400/10 rounded-2xl flex items-center justify-center mb-4">
+          <AlertCircle className="h-8 w-8 text-red-400" />
+        </div>
+        <h2 className="font-display text-xl text-stone-100 mb-2">Impossible de charger les statistiques</h2>
+        <p className="text-stone-500 mb-6 max-w-sm">
+          Une erreur est survenue lors du chargement du tableau de bord. Vérifiez votre connexion et réessayez.
+        </p>
+        <button
+          onClick={reload}
+          className="inline-flex items-center px-5 py-2.5 bg-gradient-to-r from-amber-500 to-amber-600 text-surface-base font-semibold rounded-xl shadow-glow-amber transition-all duration-200 hover:from-amber-400 hover:to-amber-500 hover:-translate-y-0.5 active:translate-y-0"
+        >
+          <RefreshCw className="h-4 w-4 mr-2" />
+          Réessayer
+        </button>
+      </div>
+    );
+  }
+
   const statusCards = [
     { label: 'Total articles', value: stats?.totalItems || 0, icon: Package, color: 'bg-gradient-to-br from-amber-500 to-amber-600', glow: 'shadow-glow-amber' },
     { label: 'À préparer', value: stats?.countByStatus?.['TO_PREPARE'] || 0, icon: Clock, color: 'bg-gradient-to-br from-amber-400 to-amber-500', glow: 'shadow-glow-amber' },
     { label: 'À vérifier', value: stats?.countByStatus?.['TO_VERIFY'] || 0, icon: Search, color: 'bg-gradient-to-br from-blue-400 to-blue-500', glow: 'shadow-glow-blue' },
+    { label: 'En attente', value: stats?.countByStatus?.['PENDING'] || 0, icon: Hourglass, color: 'bg-gradient-to-br from-purple-400 to-purple-500', glow: '' },
     { label: 'Prêt', value: stats?.countByStatus?.['READY'] || 0, icon: CheckCircle, color: 'bg-gradient-to-br from-lime-500 to-lime-600', glow: 'shadow-glow-lime' },
     { label: 'Archivé', value: stats?.countByStatus?.['ARCHIVED'] || 0, icon: Archive, color: 'bg-gradient-to-br from-stone-400 to-stone-500', glow: '' },
   ];
@@ -69,7 +70,7 @@ export default function Dashboard() {
         <p className="text-stone-400 mt-1">Aperçu de votre inventaire</p>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6 mb-8">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-6 gap-6 mb-8">
         {statusCards.map((card, index) => (
           <div
             key={card.label}

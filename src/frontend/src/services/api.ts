@@ -1,4 +1,4 @@
-import axios from 'axios';
+import http from './http';
 import {
   Item,
   ItemFormData,
@@ -11,61 +11,40 @@ import {
   ItemListSearchParams
 } from '../types/item';
 
-const api = axios.create({
-  baseURL: '/api/v1',
-  withCredentials: true,
-});
-
-// Unwrap Google JSON Style Guide response envelope and redirect on 401
-api.interceptors.response.use(
-  (response) => {
-    if (response.data && typeof response.data === 'object' && 'data' in response.data) {
-      response.data = response.data.data;
-    }
-    return response;
-  },
-  (error) => {
-    if (error.response?.status === 401 && !window.location.pathname.includes('/login')) {
-      window.location.href = '/login';
-    }
-    return Promise.reject(error);
-  }
-);
-
 export const listsApi = {
-  getAll: async (params: ItemListSearchParams = {}): Promise<PageResponse<ItemList>> => {
-    const response = await api.get<PageResponse<ItemList>>('/lists', { params });
+  getAll: async (params: ItemListSearchParams = {}, signal?: AbortSignal): Promise<PageResponse<ItemList>> => {
+    const response = await http.get<PageResponse<ItemList>>('/lists', { params, signal });
     return response.data;
   },
 
-  getById: async (id: string): Promise<ItemListWithItems> => {
-    const response = await api.get<ItemListWithItems>(`/lists/${id}`);
+  getById: async (id: string, signal?: AbortSignal): Promise<ItemListWithItems> => {
+    const response = await http.get<ItemListWithItems>(`/lists/${id}`, { signal });
     return response.data;
   },
 
   create: async (data: ItemListFormData): Promise<ItemList> => {
-    const response = await api.post<ItemList>('/lists', data);
+    const response = await http.post<ItemList>('/lists', data);
     return response.data;
   },
 
   update: async (id: string, data: ItemListFormData): Promise<ItemList> => {
-    const response = await api.patch<ItemList>(`/lists/${id}`, data);
+    const response = await http.patch<ItemList>(`/lists/${id}`, data);
     return response.data;
   },
 
   delete: async (id: string): Promise<void> => {
-    await api.delete(`/lists/${id}`);
+    await http.delete(`/lists/${id}`);
   },
 };
 
 export const itemsApi = {
-  getAll: async (params: ItemSearchParams = {}): Promise<PageResponse<Item>> => {
-    const response = await api.get<PageResponse<Item>>('/items', { params });
+  getAll: async (params: ItemSearchParams = {}, signal?: AbortSignal): Promise<PageResponse<Item>> => {
+    const response = await http.get<PageResponse<Item>>('/items', { params, signal });
     return response.data;
   },
 
-  getById: async (id: string): Promise<Item> => {
-    const response = await api.get<Item>(`/items/${id}`);
+  getById: async (id: string, signal?: AbortSignal): Promise<Item> => {
+    const response = await http.get<Item>(`/items/${id}`, { signal });
     return response.data;
   },
 
@@ -75,7 +54,7 @@ export const itemsApi = {
     if (image) {
       formData.append('image', image);
     }
-    const response = await api.post<Item>('/items', formData);
+    const response = await http.post<Item>('/items', formData);
     return response.data;
   },
 
@@ -85,18 +64,18 @@ export const itemsApi = {
     if (image) {
       formData.append('image', image);
     }
-    const response = await api.patch<Item>(`/items/${id}`, formData);
+    const response = await http.patch<Item>(`/items/${id}`, formData);
     return response.data;
   },
 
   delete: async (id: string): Promise<void> => {
-    await api.delete(`/items/${id}`);
+    await http.delete(`/items/${id}`);
   },
 };
 
 export const dashboardApi = {
-  getStats: async (): Promise<DashboardStats> => {
-    const response = await api.get<DashboardStats>('/items/stats');
+  getStats: async (signal?: AbortSignal): Promise<DashboardStats> => {
+    const response = await http.get<DashboardStats>('/items/stats', { signal });
     return response.data;
   },
 };
