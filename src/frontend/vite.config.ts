@@ -1,3 +1,4 @@
+/// <reference types="vitest" />
 import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
 
@@ -7,6 +8,9 @@ export default defineConfig({
     alias: {
       '@': new URL('./src', import.meta.url).pathname,
     },
+  },
+  test: {
+    globals: true,
   },
   server: {
     port: 5173,
