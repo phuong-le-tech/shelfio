@@ -21,7 +21,11 @@ import org.springframework.mock.web.MockMultipartFile;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.MvcResult;
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.transaction.annotation.Transactional;
+
+import com.inventory.security.CustomUserDetails;
 
 import java.util.UUID;
 
@@ -71,6 +75,13 @@ class ItemControllerIntegrationTest {
         testList.setCategory("Electronics");
         testList.setUser(testUser);
         testList = itemListRepository.save(testList);
+
+        // Set up SecurityContext so service-layer auth checks pass
+        CustomUserDetails userDetails = new CustomUserDetails(
+                testUser.getId(), testUser.getEmail(), testUser.getRole().name());
+        UsernamePasswordAuthenticationToken auth =
+                new UsernamePasswordAuthenticationToken(userDetails, null, userDetails.getAuthorities());
+        SecurityContextHolder.getContext().setAuthentication(auth);
     }
 
     @Nested

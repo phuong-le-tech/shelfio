@@ -20,6 +20,10 @@ import org.springframework.lang.NonNull;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
+import jakarta.validation.ConstraintViolation;
+import jakarta.validation.ConstraintViolationException;
+import jakarta.validation.Validator;
+
 import java.io.IOException;
 import java.util.Objects;
 import java.util.Set;
@@ -33,10 +37,12 @@ public class ItemController {
 
     private final IItemService itemService;
     private final ObjectMapper objectMapper;
+    private final Validator validator;
 
-    public ItemController(IItemService itemService, ObjectMapper objectMapper) {
+    public ItemController(IItemService itemService, ObjectMapper objectMapper, Validator validator) {
         this.itemService = itemService;
         this.objectMapper = objectMapper;
+        this.validator = validator;
     }
 
     @GetMapping
@@ -87,6 +93,10 @@ public class ItemController {
             @RequestParam(value = "image", required = false) MultipartFile image) throws IOException {
         ItemRequest request = objectMapper.readValue(data, ItemRequest.class);
         Objects.requireNonNull(request, "Item request data must not be null");
+        Set<ConstraintViolation<ItemRequest>> violations = validator.validate(request);
+        if (!violations.isEmpty()) {
+            throw new ConstraintViolationException(violations);
+        }
         Item item = itemService.createItem(request, image);
         return ResponseEntity.status(HttpStatus.CREATED).body(ItemResponse.fromEntity(item));
     }
@@ -97,6 +107,11 @@ public class ItemController {
             @RequestParam("data") @NonNull String data,
             @RequestParam(value = "image", required = false) MultipartFile image) throws IOException {
         ItemRequest request = objectMapper.readValue(data, ItemRequest.class);
+        Objects.requireNonNull(request, "Item request data must not be null");
+        Set<ConstraintViolation<ItemRequest>> violations = validator.validate(request);
+        if (!violations.isEmpty()) {
+            throw new ConstraintViolationException(violations);
+        }
         Item item = itemService.updateItem(id, request, image);
         return ItemResponse.fromEntity(item);
     }

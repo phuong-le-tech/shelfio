@@ -2,6 +2,7 @@ package com.inventory.controller;
 
 import com.inventory.dto.response.ApiErrorResponse;
 import com.inventory.exception.CustomFieldValidationException;
+import jakarta.validation.ConstraintViolationException;
 import com.inventory.exception.FileValidationException;
 import com.inventory.exception.ItemListNotFoundException;
 import com.inventory.exception.ItemNotFoundException;
@@ -61,6 +62,15 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(FileValidationException.class)
     public ResponseEntity<ApiErrorResponse> handleFileValidation(FileValidationException e) {
         return buildErrorResponse(HttpStatus.BAD_REQUEST, e.getMessage());
+    }
+
+    @ExceptionHandler(ConstraintViolationException.class)
+    public ResponseEntity<ApiErrorResponse> handleConstraintViolation(ConstraintViolationException e) {
+        String message = e.getConstraintViolations().stream()
+                .map(v -> v.getPropertyPath() + ": " + v.getMessage())
+                .findFirst()
+                .orElse("Validation failed");
+        return buildErrorResponse(HttpStatus.BAD_REQUEST, message);
     }
 
     @ExceptionHandler(MethodArgumentNotValidException.class)

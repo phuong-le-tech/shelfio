@@ -27,6 +27,15 @@ public class CustomUserDetails implements UserDetails {
         this.enabled = user.isEnabled();
     }
 
+    /** Build from JWT claims — avoids a DB query on every authenticated request. */
+    public CustomUserDetails(UUID id, String email, String role) {
+        this.id = id;
+        this.email = email;
+        this.password = null;
+        this.authorities = List.of(new SimpleGrantedAuthority("ROLE_" + role));
+        this.enabled = true;
+    }
+
     @Override
     public String getUsername() {
         return email;

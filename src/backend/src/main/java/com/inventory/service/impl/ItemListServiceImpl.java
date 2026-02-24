@@ -17,7 +17,6 @@ import org.springframework.lang.NonNull;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.util.Objects;
 import java.util.UUID;
 
 @Service
@@ -29,37 +28,37 @@ public class ItemListServiceImpl implements IItemListService {
     private final SecurityUtils securityUtils;
     private final CustomFieldValidator customFieldValidator;
 
+    private UUID requireCurrentUserId() {
+        return securityUtils.getCurrentUserId()
+                .orElseThrow(() -> new UnauthorizedException("Not authenticated"));
+    }
+
     @Override
     @Transactional(readOnly = true)
     public Page<ItemList> getAllLists(@NonNull Pageable pageable) {
         if (securityUtils.isAdmin()) {
             return itemListRepository.findAll(pageable);
         }
-        UUID userId = securityUtils.getCurrentUserId()
-                .orElseThrow(() -> new UnauthorizedException("Not authenticated"));
-        return itemListRepository.findByUserId(Objects.requireNonNull(userId, "User not found"), pageable);
+        return itemListRepository.findByUserId(requireCurrentUserId(), pageable);
     }
 
     @Override
     @Transactional(readOnly = true)
     public ItemList getListById(@NonNull UUID id) {
         if (securityUtils.isAdmin()) {
-            return itemListRepository.findByIdWithItems(id)
+            return itemListRepository.findById(id)
                     .orElseThrow(() -> new ItemListNotFoundException(id));
         }
-        UUID userId = securityUtils.getCurrentUserId()
-                .orElseThrow(() -> new UnauthorizedException("Not authenticated"));
-        return itemListRepository.findByIdAndUserId(id, Objects.requireNonNull(userId, "User not found"))
+        return itemListRepository.findByIdAndUserId(id, requireCurrentUserId())
                 .orElseThrow(() -> new ItemListNotFoundException(id));
     }
 
     @Override
     @Transactional
     public ItemList createList(@NonNull ItemListRequest request) {
-        UUID userId = securityUtils.getCurrentUserId()
-                .orElseThrow(() -> new UnauthorizedException("Not authenticated"));
-        
-        User user = userRepository.findById(Objects.requireNonNull(userId, "User not found"))
+        UUID userId = requireCurrentUserId();
+
+        User user = userRepository.findById(userId)
                 .orElseThrow(() -> new UnauthorizedException("User not found"));
 
         customFieldValidator.validateDefinitionNames(request.customFieldDefinitions());
@@ -96,9 +95,7 @@ public class ItemListServiceImpl implements IItemListService {
             itemListRepository.deleteById(id);
             return;
         }
-        UUID userId = securityUtils.getCurrentUserId()
-                .orElseThrow(() -> new UnauthorizedException("Not authenticated"));
-        if (!itemListRepository.existsByIdAndUserId(id, Objects.requireNonNull(userId, "User not found"))) {
+        if (!itemListRepository.existsByIdAndUserId(id, requireCurrentUserId())) {
             throw new ItemListNotFoundException(id);
         }
         itemListRepository.deleteById(id);

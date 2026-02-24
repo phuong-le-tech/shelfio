@@ -7,11 +7,13 @@ import com.inventory.enums.ItemStatus;
 import com.inventory.exception.FileValidationException;
 import com.inventory.exception.ItemListNotFoundException;
 import com.inventory.exception.ItemNotFoundException;
+import com.inventory.exception.UnauthorizedException;
 import com.inventory.model.Item;
 import com.inventory.model.ItemList;
 import com.inventory.repository.ItemListRepository;
 import com.inventory.repository.ItemRepository;
 import com.inventory.repository.specification.ItemSpecification;
+import com.inventory.security.SecurityUtils;
 import com.inventory.service.CustomFieldValidator;
 import com.inventory.service.IItemService;
 
@@ -25,6 +27,7 @@ import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
 import java.util.Arrays;
+import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
@@ -42,12 +45,14 @@ public class ItemServiceImpl implements IItemService {
     private final ItemRepository itemRepository;
     private final ItemListRepository itemListRepository;
     private final CustomFieldValidator customFieldValidator;
+    private final SecurityUtils securityUtils;
 
     public ItemServiceImpl(ItemRepository itemRepository, ItemListRepository itemListRepository,
-                           CustomFieldValidator customFieldValidator) {
+                           CustomFieldValidator customFieldValidator, SecurityUtils securityUtils) {
         this.itemRepository = itemRepository;
         this.itemListRepository = itemListRepository;
         this.customFieldValidator = customFieldValidator;
+        this.securityUtils = securityUtils;
     }
 
     @Override
@@ -67,9 +72,8 @@ public class ItemServiceImpl implements IItemService {
     @Transactional
     public Item createItem(@NonNull ItemRequest request, MultipartFile image) throws IOException {
 
-        ItemList itemList = itemListRepository.findById(Objects.requireNonNull(request.itemListId(),
-                "Item list ID must not be null"))
-                .orElseThrow(() -> new ItemListNotFoundException(request.itemListId()));
+        ItemList itemList = findListWithOwnershipCheck(
+                Objects.requireNonNull(request.itemListId(), "Item list ID must not be null"));
 
         customFieldValidator.validate(itemList.getCustomFieldDefinitions(), request.customFieldValues());
 
@@ -96,9 +100,8 @@ public class ItemServiceImpl implements IItemService {
         Item item = getItemById(id)
                 .orElseThrow(() -> new ItemNotFoundException(id));
 
-        ItemList itemList = itemListRepository.findById(Objects.requireNonNull(request.itemListId(),
-                "Item list ID must not be null"))
-                .orElseThrow(() -> new ItemListNotFoundException(request.itemListId()));
+        ItemList itemList = findListWithOwnershipCheck(
+                Objects.requireNonNull(request.itemListId(), "Item list ID must not be null"));
 
         customFieldValidator.validate(itemList.getCustomFieldDefinitions(), request.customFieldValues());
 
@@ -128,20 +131,45 @@ public class ItemServiceImpl implements IItemService {
     }
 
     @Override
+    @Transactional(readOnly = true)
     public DashboardStats getDashboardStats() {
-        long totalItems = itemRepository.count();
+        if (securityUtils.isAdmin()) {
+            return buildStats(
+                    itemRepository.count(),
+                    itemRepository.countByStatus(),
+                    itemRepository.countByCategory());
+        }
+        UUID userId = securityUtils.getCurrentUserId()
+                .orElseThrow(() -> new UnauthorizedException("Not authenticated"));
+        return buildStats(
+                itemRepository.countByUserId(userId),
+                itemRepository.countByStatusAndUserId(userId),
+                itemRepository.countByCategoryAndUserId(userId));
+    }
 
-        Map<String, Long> statusCounts = itemRepository.countByStatus().stream()
+    private DashboardStats buildStats(long totalItems, List<Object[]> statusRows, List<Object[]> categoryRows) {
+        Map<String, Long> statusCounts = statusRows.stream()
                 .collect(Collectors.toMap(
                         row -> row[0] != null ? ((ItemStatus) row[0]).name() : "Unknown",
                         row -> (Long) row[1]));
-
-        Map<String, Long> categoryCounts = itemRepository.countByCategory().stream()
+        Map<String, Long> categoryCounts = categoryRows.stream()
                 .collect(Collectors.toMap(
                         row -> row[0] != null ? (String) row[0] : "Uncategorized",
                         row -> (Long) row[1]));
-
         return new DashboardStats(totalItems, statusCounts, categoryCounts);
+    }
+
+    private ItemList findListWithOwnershipCheck(UUID listId) {
+        ItemList itemList = itemListRepository.findById(listId)
+                .orElseThrow(() -> new ItemListNotFoundException(listId));
+        if (!securityUtils.isAdmin()) {
+            UUID userId = securityUtils.getCurrentUserId()
+                    .orElseThrow(() -> new UnauthorizedException("Not authenticated"));
+            if (!itemList.getUser().getId().equals(userId)) {
+                throw new ItemListNotFoundException(listId);
+            }
+        }
+        return itemList;
     }
 
     private String validateAndDetectContentType(byte[] data) {

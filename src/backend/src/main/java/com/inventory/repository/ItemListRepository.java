@@ -22,6 +22,9 @@ public interface ItemListRepository extends JpaRepository<ItemList, UUID>, JpaSp
     Page<ItemList> findByUserId(@NonNull UUID userId, @NonNull Pageable pageable);
 
     @Query("SELECT il FROM ItemList il LEFT JOIN FETCH il.items WHERE il.id = :id AND il.user.id = :userId")
+    Optional<ItemList> findByIdAndUserIdWithItems(@NonNull UUID id, @NonNull UUID userId);
+
+    @Query("SELECT il FROM ItemList il WHERE il.id = :id AND il.user.id = :userId")
     Optional<ItemList> findByIdAndUserId(@NonNull UUID id, @NonNull UUID userId);
 
     boolean existsByIdAndUserId(@NonNull UUID id, @NonNull UUID userId);

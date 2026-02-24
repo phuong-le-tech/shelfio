@@ -10,6 +10,7 @@ import com.inventory.model.Item;
 import com.inventory.model.ItemList;
 import com.inventory.repository.ItemListRepository;
 import com.inventory.repository.ItemRepository;
+import com.inventory.security.SecurityUtils;
 import com.inventory.service.impl.ItemServiceImpl;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -49,6 +50,9 @@ class ItemServiceImplTest {
 
     @Mock
     private CustomFieldValidator customFieldValidator;
+
+    @Mock
+    private SecurityUtils securityUtils;
 
     @InjectMocks
     private ItemServiceImpl itemService;
@@ -133,6 +137,7 @@ class ItemServiceImplTest {
         @DisplayName("should create item with valid request")
         void createItem_validRequest_createsItem() throws IOException {
             ItemRequest request = new ItemRequest("New Item", testListId, ItemStatus.TO_PREPARE, 5, null);
+            when(securityUtils.isAdmin()).thenReturn(true);
             when(itemListRepository.findById(testListId)).thenReturn(Optional.of(testList));
             when(itemRepository.save(any(Item.class))).thenAnswer(invocation -> {
                 Item saved = invocation.getArgument(0);
@@ -153,6 +158,7 @@ class ItemServiceImplTest {
         @DisplayName("should create item with default status when not provided")
         void createItem_noStatus_usesDefaultStatus() throws IOException {
             ItemRequest request = new ItemRequest("New Item", testListId, null, null, null);
+            when(securityUtils.isAdmin()).thenReturn(true);
             when(itemListRepository.findById(testListId)).thenReturn(Optional.of(testList));
             when(itemRepository.save(any(Item.class))).thenAnswer(invocation -> invocation.getArgument(0));
 
@@ -182,6 +188,7 @@ class ItemServiceImplTest {
             MockMultipartFile image = new MockMultipartFile(
                     "image", "test.jpg", "image/jpeg", jpegBytes);
 
+            when(securityUtils.isAdmin()).thenReturn(true);
             when(itemListRepository.findById(testListId)).thenReturn(Optional.of(testList));
             when(itemRepository.save(any(Item.class))).thenAnswer(invocation -> invocation.getArgument(0));
 
@@ -201,6 +208,7 @@ class ItemServiceImplTest {
         @DisplayName("should update existing item")
         void updateItem_existingId_updatesItem() throws IOException {
             ItemRequest request = new ItemRequest("Updated Name", testListId, ItemStatus.READY, 20, null);
+            when(securityUtils.isAdmin()).thenReturn(true);
             when(itemRepository.findById(testId)).thenReturn(Optional.of(testItem));
             when(itemListRepository.findById(testListId)).thenReturn(Optional.of(testList));
             when(itemRepository.save(any(Item.class))).thenAnswer(invocation -> invocation.getArgument(0));
@@ -218,6 +226,7 @@ class ItemServiceImplTest {
         void updateItem_noStatus_keepsExistingStatus() throws IOException {
             testItem.setStatus(ItemStatus.ARCHIVED);
             ItemRequest request = new ItemRequest("Updated Name", testListId, null, null, null);
+            when(securityUtils.isAdmin()).thenReturn(true);
             when(itemRepository.findById(testId)).thenReturn(Optional.of(testItem));
             when(itemListRepository.findById(testListId)).thenReturn(Optional.of(testList));
             when(itemRepository.save(any(Item.class))).thenAnswer(invocation -> invocation.getArgument(0));
@@ -261,6 +270,7 @@ class ItemServiceImplTest {
         @Test
         @DisplayName("should return dashboard statistics")
         void getDashboardStats_returnsStats() {
+            when(securityUtils.isAdmin()).thenReturn(true);
             when(itemRepository.count()).thenReturn(10L);
             when(itemRepository.countByStatus()).thenReturn(List.of(
                     new Object[]{ItemStatus.TO_PREPARE, 5L},
