@@ -42,7 +42,7 @@ public class Item {
     @Column(nullable = false)
     @NotNull(message = "Status is required")
     @Enumerated(EnumType.STRING)
-    private ItemStatus status = ItemStatus.TO_PREPARE;
+    private ItemStatus status = ItemStatus.IN_STOCK;
 
     @Column(nullable = false)
     private Integer stock = 0;

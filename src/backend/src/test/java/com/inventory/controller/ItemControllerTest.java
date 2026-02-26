@@ -73,7 +73,7 @@ class ItemControllerTest {
         testItem.setId(testId);
         testItem.setName("Test Item");
         testItem.setItemList(testList);
-        testItem.setStatus(ItemStatus.TO_PREPARE);
+        testItem.setStatus(ItemStatus.IN_STOCK);
         testItem.setStock(10);
     }
 
@@ -122,7 +122,7 @@ class ItemControllerTest {
                     .andExpect(status().isOk())
                     .andExpect(jsonPath("$.data.id").value(testId.toString()))
                     .andExpect(jsonPath("$.data.name").value("Test Item"))
-                    .andExpect(jsonPath("$.data.status").value("TO_PREPARE"));
+                    .andExpect(jsonPath("$.data.status").value("IN_STOCK"));
         }
 
         @Test
@@ -144,7 +144,7 @@ class ItemControllerTest {
         @Test
         @DisplayName("should create item with valid request")
         void createItem_validRequest_returns201() throws Exception {
-            ItemRequest request = new ItemRequest("New Item", testListId, ItemStatus.TO_PREPARE, 5, null);
+            ItemRequest request = new ItemRequest("New Item", testListId, ItemStatus.IN_STOCK, 5, null);
             when(itemService.createItem(any(ItemRequest.class), any())).thenReturn(testItem);
 
             String jsonData = objectMapper.writeValueAsString(request);
@@ -158,7 +158,7 @@ class ItemControllerTest {
         @Test
         @DisplayName("should create item with image")
         void createItem_withImage_returns201() throws Exception {
-            ItemRequest request = new ItemRequest("New Item", testListId, ItemStatus.TO_PREPARE, 10, null);
+            ItemRequest request = new ItemRequest("New Item", testListId, ItemStatus.IN_STOCK, 10, null);
             when(itemService.createItem(any(ItemRequest.class), any())).thenReturn(testItem);
 
             String jsonData = objectMapper.writeValueAsString(request);
@@ -179,12 +179,12 @@ class ItemControllerTest {
         @Test
         @DisplayName("should update existing item")
         void updateItem_existingId_returnsUpdatedItem() throws Exception {
-            ItemRequest request = new ItemRequest("Updated Item", testListId, ItemStatus.READY, 20, null);
+            ItemRequest request = new ItemRequest("Updated Item", testListId, ItemStatus.LOW_STOCK, 20, null);
             Item updatedItem = new Item();
             updatedItem.setId(testId);
             updatedItem.setName("Updated Item");
             updatedItem.setItemList(testList);
-            updatedItem.setStatus(ItemStatus.READY);
+            updatedItem.setStatus(ItemStatus.LOW_STOCK);
             updatedItem.setStock(20);
 
             when(itemService.updateItem(eq(testId), any(ItemRequest.class), any())).thenReturn(updatedItem);
@@ -199,7 +199,7 @@ class ItemControllerTest {
                             }))
                     .andExpect(status().isOk())
                     .andExpect(jsonPath("$.data.name").value("Updated Item"))
-                    .andExpect(jsonPath("$.data.status").value("READY"));
+                    .andExpect(jsonPath("$.data.status").value("LOW_STOCK"));
         }
     }
 
@@ -235,16 +235,17 @@ class ItemControllerTest {
         @DisplayName("should return dashboard statistics")
         void getDashboardStats_returnsStats() throws Exception {
             DashboardStats stats = new DashboardStats(
-                    10L,
-                    Map.of("TO_PREPARE", 5L, "READY", 3L, "PENDING", 2L),
-                    Map.of("Electronics", 6L, "Clothing", 4L)
+                    10L, 100L, 2L, 1L,
+                    Map.of("IN_STOCK", 5L, "LOW_STOCK", 3L, "OUT_OF_STOCK", 2L),
+                    Map.of("Electronics", 6L, "Clothing", 4L),
+                    List.of(), List.of()
             );
             when(itemService.getDashboardStats()).thenReturn(stats);
 
             mockMvc.perform(get("/api/v1/items/stats"))
                     .andExpect(status().isOk())
                     .andExpect(jsonPath("$.data.totalItems").value(10))
-                    .andExpect(jsonPath("$.data.countByStatus.TO_PREPARE").value(5))
+                    .andExpect(jsonPath("$.data.countByStatus.IN_STOCK").value(5))
                     .andExpect(jsonPath("$.data.countByCategory.Electronics").value(6));
         }
     }

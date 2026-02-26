@@ -38,6 +38,7 @@ import java.util.stream.Collectors;
 @Service
 public class ItemServiceImpl implements IItemService {
 
+    private static final int LOW_STOCK_THRESHOLD = 5;
     private static final long MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
     private static final Set<String> ALLOWED_CONTENT_TYPES = Set.of(
             "image/jpeg", "image/png", "image/gif", "image/webp");
@@ -80,7 +81,7 @@ public class ItemServiceImpl implements IItemService {
         Item item = new Item();
         item.setName(request.name());
         item.setItemList(itemList);
-        item.setStatus(request.status() != null ? request.status() : ItemStatus.TO_PREPARE);
+        item.setStatus(request.status() != null ? request.status() : ItemStatus.IN_STOCK);
         item.setStock(request.stock() != null ? request.stock() : 0);
         item.setCustomFieldValues(request.customFieldValues());
 
@@ -136,18 +137,30 @@ public class ItemServiceImpl implements IItemService {
         if (securityUtils.isAdmin()) {
             return buildStats(
                     itemRepository.count(),
+                    itemRepository.sumStock(),
+                    itemRepository.countLowStock(LOW_STOCK_THRESHOLD),
+                    itemRepository.countOutOfStock(),
                     itemRepository.countByStatus(),
-                    itemRepository.countByCategory());
+                    itemRepository.countByCategory(),
+                    itemRepository.getListsOverview(),
+                    itemRepository.findTop5ByOrderByUpdatedAtDesc());
         }
         UUID userId = securityUtils.getCurrentUserId()
                 .orElseThrow(() -> new UnauthorizedException("Not authenticated"));
         return buildStats(
                 itemRepository.countByUserId(userId),
+                itemRepository.sumStockByUserId(userId),
+                itemRepository.countLowStockByUserId(userId, LOW_STOCK_THRESHOLD),
+                itemRepository.countOutOfStockByUserId(userId),
                 itemRepository.countByStatusAndUserId(userId),
-                itemRepository.countByCategoryAndUserId(userId));
+                itemRepository.countByCategoryAndUserId(userId),
+                itemRepository.getListsOverviewByUserId(userId),
+                itemRepository.findTop5ByUserIdOrderByUpdatedAtDesc(userId));
     }
 
-    private DashboardStats buildStats(long totalItems, List<Object[]> statusRows, List<Object[]> categoryRows) {
+    private DashboardStats buildStats(long totalItems, long totalQuantity, long lowStockCount, long outOfStockCount,
+                                      List<Object[]> statusRows, List<Object[]> categoryRows,
+                                      List<Object[]> listsOverviewRows, List<Item> recentItems) {
         Map<String, Long> statusCounts = statusRows.stream()
                 .collect(Collectors.toMap(
                         row -> row[0] != null ? ((ItemStatus) row[0]).name() : "Unknown",
@@ -156,7 +169,29 @@ public class ItemServiceImpl implements IItemService {
                 .collect(Collectors.toMap(
                         row -> row[0] != null ? (String) row[0] : "Uncategorized",
                         row -> (Long) row[1]));
-        return new DashboardStats(totalItems, statusCounts, categoryCounts);
+        
+        // Query returns: [listName (String), itemsCount (Long), totalQuantity (Long)]
+        List<DashboardStats.ListOverviewDto> listsOverview = listsOverviewRows.stream()
+                .map(row -> new DashboardStats.ListOverviewDto(
+                        (String) row[0],
+                        (Long) row[1],
+                        (Long) row[2]))
+                .toList();
+
+        List<DashboardStats.RecentItemDto> recentlyUpdated = recentItems.stream()
+                .map(item -> new DashboardStats.RecentItemDto(
+                        item.getId().toString(),
+                        item.getName(),
+                        item.getItemList().getName(),
+                        item.getCustomFieldValues() != null && item.getCustomFieldValues().containsKey("sku") 
+                                ? item.getCustomFieldValues().get("sku").toString() : null,
+                        item.getStock(),
+                        item.getStatus().name(),
+                        item.getUpdatedAt()))
+                .toList();
+
+        return new DashboardStats(totalItems, totalQuantity, lowStockCount, outOfStockCount,
+                statusCounts, categoryCounts, listsOverview, recentlyUpdated);
     }
 
     private ItemList findListWithOwnershipCheck(UUID listId) {

@@ -1,27 +1,55 @@
-import { useEffect, useState } from 'react';
-import { useParams, useNavigate, Link } from 'react-router-dom';
-import { ArrowLeft, Plus, Pencil, Trash2, Package, List, ChevronLeft, ChevronRight, MoreHorizontal } from 'lucide-react';
-import axios from 'axios';
-import { listsApi, itemsApi } from '../services/api';
-import { ItemList, Item, ItemStatus, formatStatus, STATUS_OPTIONS, STATUS_LABELS, getItemImageUrl, formatCustomFieldValue } from '../types/item';
-import { SkeletonCard, SkeletonText } from '../components/Skeleton';
-import { useToast } from '../components/Toast';
-import ConfirmModal from '../components/ConfirmModal';
-import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
-import { BlurFade } from '@/components/effects/blur-fade';
-import { StaggeredList, StaggeredItem } from '@/components/effects/staggered-list';
-import { cn } from '@/lib/utils';
+import { useEffect, useState } from "react";
+import { useParams, useNavigate, Link } from "react-router-dom";
+import {
+  ArrowLeft,
+  Plus,
+  Pencil,
+  Trash2,
+  Package,
+  List,
+  ChevronLeft,
+  ChevronRight,
+  MoreHorizontal,
+} from "lucide-react";
+import axios from "axios";
+import { listsApi, itemsApi } from "../services/api";
+import {
+  ItemList,
+  Item,
+  ItemStatus,
+  formatStatus,
+  STATUS_OPTIONS,
+  STATUS_LABELS,
+  getItemImageUrl,
+  formatCustomFieldValue,
+} from "../types/item";
+import { SkeletonCard, SkeletonText } from "../components/Skeleton";
+import { useToast } from "../components/Toast";
+import ConfirmModal from "../components/ConfirmModal";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { BlurFade } from "@/components/effects/blur-fade";
+import {
+  StaggeredList,
+  StaggeredItem,
+} from "@/components/effects/staggered-list";
+import { cn } from "@/lib/utils";
 
 const ITEMS_PER_PAGE = 12;
 
-const statusToBadgeVariant: Record<ItemStatus, 'prepare' | 'verify' | 'pending' | 'ready' | 'archived'> = {
-  TO_PREPARE: 'prepare',
-  TO_VERIFY: 'verify',
-  PENDING: 'pending',
-  READY: 'ready',
-  ARCHIVED: 'archived',
+const statusToBadgeVariant: Record<
+  ItemStatus,
+  "success" | "warning" | "error" | "default"
+> = {
+  IN_STOCK: "success",
+  LOW_STOCK: "warning",
+  OUT_OF_STOCK: "error",
 };
 
 export default function ListDetail() {
@@ -39,7 +67,7 @@ export default function ListDetail() {
   const [itemsReloadKey, setItemsReloadKey] = useState(0);
   const [deletingItemId, setDeletingItemId] = useState<string | null>(null);
   const [pendingDeleteId, setPendingDeleteId] = useState<string | null>(null);
-  const [statusFilter, setStatusFilter] = useState<ItemStatus | ''>('');
+  const [statusFilter, setStatusFilter] = useState<ItemStatus | "">("");
 
   useEffect(() => {
     if (!id) return;
@@ -51,8 +79,8 @@ export default function ListDetail() {
         if (!controller.signal.aborted) setList(listData);
       } catch (err) {
         if (!axios.isCancel(err) && !controller.signal.aborted) {
-          showToast('Echec du chargement de la liste', 'error');
-          navigate('/lists');
+          showToast("Echec du chargement de la liste", "error");
+          navigate("/lists");
         }
       } finally {
         if (!controller.signal.aborted) setListLoading(false);
@@ -69,8 +97,15 @@ export default function ListDetail() {
       setItemsLoading(true);
       try {
         const response = await itemsApi.getAll(
-          { itemListId: id, status: statusFilter || undefined, page: itemPage, size: ITEMS_PER_PAGE, sortBy: 'createdAt', sortDir: 'desc' },
-          controller.signal
+          {
+            itemListId: id,
+            status: statusFilter || undefined,
+            page: itemPage,
+            size: ITEMS_PER_PAGE,
+            sortBy: "createdAt",
+            sortDir: "desc",
+          },
+          controller.signal,
         );
         if (!controller.signal.aborted) {
           setItems(response.content);
@@ -79,7 +114,7 @@ export default function ListDetail() {
         }
       } catch (err) {
         if (!axios.isCancel(err) && !controller.signal.aborted) {
-          showToast('Echec du chargement des articles', 'error');
+          showToast("Echec du chargement des articles", "error");
         }
       } finally {
         if (!controller.signal.aborted) setItemsLoading(false);
@@ -90,7 +125,7 @@ export default function ListDetail() {
   }, [id, statusFilter, itemPage, itemsReloadKey, showToast]);
 
   const handleStatusFilterChange = (value: string) => {
-    setStatusFilter(value as ItemStatus | '');
+    setStatusFilter(value as ItemStatus | "");
     setItemPage(0);
   };
 
@@ -101,10 +136,10 @@ export default function ListDetail() {
     setDeletingItemId(itemId);
     try {
       await itemsApi.delete(itemId);
-      showToast('Article supprime avec succes', 'success');
-      setItemsReloadKey(k => k + 1);
+      showToast("Article supprimé avec succès", "success");
+      setItemsReloadKey((k) => k + 1);
     } catch {
-      showToast("Echec de la suppression de l'article", 'error');
+      showToast("Échec de la suppression de l'article", "error");
     } finally {
       setDeletingItemId(null);
     }
@@ -133,8 +168,12 @@ export default function ListDetail() {
         <div className="w-16 h-16 bg-muted rounded-2xl flex items-center justify-center mx-auto mb-4">
           <List className="h-8 w-8 text-muted-foreground" />
         </div>
-        <h2 className="font-display text-xl font-semibold mb-2">Liste introuvable</h2>
-        <p className="text-muted-foreground mb-6">Cette liste n'existe pas ou a ete supprimee.</p>
+        <h2 className="font-display text-xl font-semibold mb-2">
+          Liste introuvable
+        </h2>
+        <p className="text-muted-foreground mb-6">
+          Cette liste n'existe pas ou a été supprimée.
+        </p>
         <Link to="/lists">
           <Button variant="outline">
             <ArrowLeft className="h-4 w-4 mr-1.5" />
@@ -148,7 +187,7 @@ export default function ListDetail() {
   return (
     <div className="animate-fade-in">
       <button
-        onClick={() => navigate('/lists')}
+        onClick={() => navigate("/lists")}
         className="inline-flex items-center text-muted-foreground hover:text-foreground mb-8 transition-all duration-200 hover:-translate-x-0.5 group text-sm"
       >
         <ArrowLeft className="h-4 w-4 mr-1.5 transition-transform group-hover:-translate-x-0.5" />
@@ -161,15 +200,21 @@ export default function ListDetail() {
           <div>
             <BlurFade>
               <div className="flex items-center gap-3 mb-2">
-                <h1 className="font-display text-4xl lg:text-5xl font-semibold tracking-tight">{list.name}</h1>
+                <h1 className="font-display text-4xl lg:text-5xl font-semibold tracking-tight">
+                  {list.name}
+                </h1>
                 {list.category && (
-                  <Badge variant="secondary" className="mt-1">{list.category}</Badge>
+                  <Badge variant="secondary" className="mt-1">
+                    {list.category}
+                  </Badge>
                 )}
               </div>
             </BlurFade>
             {list.description && (
               <BlurFade delay={0.1}>
-                <p className="text-muted-foreground text-lg max-w-2xl">{list.description}</p>
+                <p className="text-muted-foreground text-lg max-w-2xl">
+                  {list.description}
+                </p>
               </BlurFade>
             )}
           </div>
@@ -194,12 +239,12 @@ export default function ListDetail() {
       <div className="flex items-center justify-between mb-6 gap-4">
         <div className="flex gap-2 flex-wrap">
           <button
-            onClick={() => handleStatusFilterChange('')}
+            onClick={() => handleStatusFilterChange("")}
             className={cn(
-              'px-4 py-1.5 rounded-full text-sm font-medium transition-all duration-200 border',
-              statusFilter === ''
-                ? 'bg-foreground text-background border-foreground'
-                : 'bg-background text-muted-foreground border-border hover:border-foreground/30'
+              "px-4 py-1.5 rounded-full text-sm font-medium transition-all duration-200 border",
+              statusFilter === ""
+                ? "bg-foreground text-background border-foreground"
+                : "bg-background text-muted-foreground border-border hover:border-foreground/30",
             )}
           >
             Tous
@@ -209,10 +254,10 @@ export default function ListDetail() {
               key={status}
               onClick={() => handleStatusFilterChange(status)}
               className={cn(
-                'px-4 py-1.5 rounded-full text-sm font-medium transition-all duration-200 border',
+                "px-4 py-1.5 rounded-full text-sm font-medium transition-all duration-200 border",
                 statusFilter === status
-                  ? 'bg-foreground text-background border-foreground'
-                  : 'bg-background text-muted-foreground border-border hover:border-foreground/30'
+                  ? "bg-foreground text-background border-foreground"
+                  : "bg-background text-muted-foreground border-border hover:border-foreground/30",
               )}
             >
               {STATUS_LABELS[status]}
@@ -220,7 +265,9 @@ export default function ListDetail() {
           ))}
         </div>
         <p className="text-sm text-muted-foreground shrink-0">
-          {itemsLoading ? '...' : `${itemTotalElements} article${itemTotalElements !== 1 ? 's' : ''}`}
+          {itemsLoading
+            ? "..."
+            : `${itemTotalElements} article${itemTotalElements !== 1 ? "s" : ""}`}
         </p>
       </div>
 
@@ -256,12 +303,21 @@ export default function ListDetail() {
                     <div className="absolute top-3 left-3 opacity-0 group-hover:opacity-100 transition-opacity">
                       <DropdownMenu>
                         <DropdownMenuTrigger asChild>
-                          <Button variant="secondary" size="icon" className="h-8 w-8 shadow-sm">
+                          <Button
+                            variant="secondary"
+                            size="icon"
+                            aria-label="Options de l'article"
+                            className="h-8 w-8 shadow-sm"
+                          >
                             <MoreHorizontal className="h-4 w-4" />
                           </Button>
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align="start">
-                          <DropdownMenuItem onClick={() => navigate(`/lists/${id}/items/${item.id}/edit`)}>
+                          <DropdownMenuItem
+                            onClick={() =>
+                              navigate(`/lists/${id}/items/${item.id}/edit`)
+                            }
+                          >
                             <Pencil className="h-4 w-4 mr-2" />
                             Modifier
                           </DropdownMenuItem>
@@ -279,26 +335,39 @@ export default function ListDetail() {
                   </div>
 
                   <div className="p-4">
-                    <h3 className="font-semibold tracking-tight mb-1">{item.name}</h3>
+                    <h3 className="font-semibold tracking-tight mb-1">
+                      {item.name}
+                    </h3>
                     <p className="text-muted-foreground text-sm mb-2">
                       <span className="font-medium">Stock:</span> {item.stock}
                     </p>
-                    {list.customFieldDefinitions && list.customFieldDefinitions.length > 0 && (
-                      <div className="space-y-0.5">
-                        {[...list.customFieldDefinitions]
-                          .sort((a, b) => a.displayOrder - b.displayOrder)
-                          .map((def) => {
-                            const value = item.customFieldValues?.[def.name];
-                            if (value === undefined || value === null || value === '') return null;
-                            return (
-                              <p key={def.name} className="text-muted-foreground text-xs">
-                                <span className="font-medium">{def.label}:</span>{' '}
-                                {formatCustomFieldValue(def.type, value)}
-                              </p>
-                            );
-                          })}
-                      </div>
-                    )}
+                    {list.customFieldDefinitions &&
+                      list.customFieldDefinitions.length > 0 && (
+                        <div className="space-y-0.5">
+                          {[...list.customFieldDefinitions]
+                            .sort((a, b) => a.displayOrder - b.displayOrder)
+                            .map((def) => {
+                              const value = item.customFieldValues?.[def.name];
+                              if (
+                                value === undefined ||
+                                value === null ||
+                                value === ""
+                              )
+                                return null;
+                              return (
+                                <p
+                                  key={def.name}
+                                  className="text-muted-foreground text-xs"
+                                >
+                                  <span className="font-medium">
+                                    {def.label}:
+                                  </span>{" "}
+                                  {formatCustomFieldValue(def.type, value)}
+                                </p>
+                              );
+                            })}
+                        </div>
+                      )}
                   </div>
                 </div>
               </StaggeredItem>
@@ -308,7 +377,9 @@ export default function ListDetail() {
           {items.length === 0 && (
             <div className="text-center py-20 animate-fade-in">
               <Package className="h-12 w-12 mx-auto mb-3 text-muted-foreground/40" />
-              <p className="text-lg text-muted-foreground mb-4">Aucun article dans cette liste.</p>
+              <p className="text-lg text-muted-foreground mb-4">
+                Aucun article dans cette liste.
+              </p>
               <Link to={`/lists/${id}/items/new`}>
                 <Button>Ajouter votre premier article</Button>
               </Link>
@@ -320,11 +391,11 @@ export default function ListDetail() {
               <Button
                 variant="outline"
                 size="sm"
-                onClick={() => setItemPage(p => Math.max(0, p - 1))}
+                onClick={() => setItemPage((p) => Math.max(0, p - 1))}
                 disabled={itemPage === 0}
               >
                 <ChevronLeft className="h-4 w-4 mr-1" />
-                Precedent
+                Précédent
               </Button>
               <span className="text-sm text-muted-foreground">
                 Page {itemPage + 1} sur {itemTotalPages}
@@ -332,7 +403,9 @@ export default function ListDetail() {
               <Button
                 variant="outline"
                 size="sm"
-                onClick={() => setItemPage(p => Math.min(itemTotalPages - 1, p + 1))}
+                onClick={() =>
+                  setItemPage((p) => Math.min(itemTotalPages - 1, p + 1))
+                }
                 disabled={itemPage >= itemTotalPages - 1}
               >
                 Suivant
@@ -346,7 +419,7 @@ export default function ListDetail() {
       <ConfirmModal
         isOpen={pendingDeleteId !== null}
         title="Supprimer l'article"
-        message="Etes-vous sur de vouloir supprimer cet article ? Cette action est irreversible."
+        message="Êtes-vous sûr de vouloir supprimer cet article ? Cette action est irréversible."
         confirmLabel="Supprimer"
         onConfirm={handleDeleteConfirm}
         onCancel={() => setPendingDeleteId(null)}
