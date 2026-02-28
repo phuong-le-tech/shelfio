@@ -39,7 +39,6 @@ export default function ListForm() {
   const [submitting, setSubmitting] = useState(false);
 
   const { register, handleSubmit, reset, control, formState: { errors } } = useForm<ItemListFormData>({
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     resolver: zodResolver(listFormSchema) as unknown as Resolver<ItemListFormData>,
     defaultValues: {
       name: '',
