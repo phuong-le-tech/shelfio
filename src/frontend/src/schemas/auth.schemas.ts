@@ -12,7 +12,7 @@ export const createUserSchema = z.object({
     .regex(/[a-z]/, 'Doit contenir au moins une lettre minuscule')
     .regex(/[A-Z]/, 'Doit contenir au moins une lettre majuscule')
     .regex(/[0-9]/, 'Doit contenir au moins un chiffre')
-    .regex(/[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>/?~`]/, 'Doit contenir au moins un caractère spécial (!@#$%^&*...)'),
+    .regex(/[!@#$%^&*()_+\-=[\]{};':"\\|,.<>/?~`]/, 'Doit contenir au moins un caractère spécial (!@#$%^&*...)'),
   role: z.enum(['USER', 'ADMIN']),
 });
 
@@ -23,7 +23,7 @@ export const signupSchema = z.object({
     .regex(/[a-z]/, 'Doit contenir au moins une lettre minuscule')
     .regex(/[A-Z]/, 'Doit contenir au moins une lettre majuscule')
     .regex(/[0-9]/, 'Doit contenir au moins un chiffre')
-    .regex(/[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>/?~`]/, 'Doit contenir au moins un caractère spécial (!@#$%^&*...)'),
+    .regex(/[!@#$%^&*()_+\-=[\]{};':"\\|,.<>/?~`]/, 'Doit contenir au moins un caractère spécial (!@#$%^&*...)'),
   confirmPassword: z.string().min(1, 'La confirmation du mot de passe est requise'),
 }).refine((data) => data.password === data.confirmPassword, {
   message: 'Les mots de passe ne correspondent pas',
@@ -40,7 +40,7 @@ export const resetPasswordSchema = z.object({
     .regex(/[a-z]/, 'Doit contenir au moins une lettre minuscule')
     .regex(/[A-Z]/, 'Doit contenir au moins une lettre majuscule')
     .regex(/[0-9]/, 'Doit contenir au moins un chiffre')
-    .regex(/[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>/?~`]/, 'Doit contenir au moins un caractère spécial (!@#$%^&*...)'),
+    .regex(/[!@#$%^&*()_+\-=[\]{};':"\\|,.<>/?~`]/, 'Doit contenir au moins un caractère spécial (!@#$%^&*...)'),
   confirmPassword: z.string().min(1, 'La confirmation du mot de passe est requise'),
 }).refine((data) => data.password === data.confirmPassword, {
   message: 'Les mots de passe ne correspondent pas',
