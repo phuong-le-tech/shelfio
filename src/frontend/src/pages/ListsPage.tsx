@@ -94,12 +94,12 @@ export default function ListsPage() {
           </BlurFade>
         </div>
         <BlurFade delay={0.2}>
-          <Link to="/lists/new">
-            <Button>
+          <Button asChild>
+            <Link to="/lists/new">
               <Plus className="h-4 w-4 mr-2" />
               Nouvelle liste
-            </Button>
-          </Link>
+            </Link>
+          </Button>
         </BlurFade>
       </div>
 
@@ -136,12 +136,12 @@ export default function ListsPage() {
                   className="px-6 pb-6"
                 >
                   <div className="flex gap-2">
-                    <Link to={`/lists/${list.id}/edit`} className="flex-1">
-                      <Button variant="outline" size="sm" className="w-full">
+                    <Button variant="outline" size="sm" className="w-full flex-1" asChild>
+                      <Link to={`/lists/${list.id}/edit`}>
                         <Pencil className="h-3.5 w-3.5 mr-1.5" />
                         Modifier
-                      </Button>
-                    </Link>
+                      </Link>
+                    </Button>
                     <Button
                       variant="outline"
                       size="icon"
@@ -169,9 +169,9 @@ export default function ListsPage() {
           <div className="-mt-16 relative z-10">
             <FolderOpen className="h-12 w-12 mx-auto mb-3 text-muted-foreground/50" />
             <p className="text-lg text-muted-foreground mb-4">Aucune liste trouvee.</p>
-            <Link to="/lists/new">
-              <Button>Creer votre premiere liste</Button>
-            </Link>
+            <Button asChild>
+              <Link to="/lists/new">Creer votre premiere liste</Link>
+            </Button>
           </div>
         </div>
       )}

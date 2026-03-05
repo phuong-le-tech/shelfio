@@ -174,12 +174,12 @@ export default function ListDetail() {
         <p className="text-muted-foreground mb-6">
           Cette liste n'existe pas ou a été supprimée.
         </p>
-        <Link to="/lists">
-          <Button variant="outline">
+        <Button variant="outline" asChild>
+          <Link to="/lists">
             <ArrowLeft className="h-4 w-4 mr-1.5" />
             Retour aux listes
-          </Button>
-        </Link>
+          </Link>
+        </Button>
       </div>
     );
   }
@@ -219,18 +219,18 @@ export default function ListDetail() {
             )}
           </div>
           <div className="flex gap-2 flex-shrink-0">
-            <Link to={`/lists/${id}/edit`}>
-              <Button variant="outline">
+            <Button variant="outline" asChild>
+              <Link to={`/lists/${id}/edit`}>
                 <Pencil className="h-4 w-4 mr-1.5" />
                 Modifier
-              </Button>
-            </Link>
-            <Link to={`/lists/${id}/items/new`}>
-              <Button>
+              </Link>
+            </Button>
+            <Button asChild>
+              <Link to={`/lists/${id}/items/new`}>
                 <Plus className="h-4 w-4 mr-1.5" />
                 Ajouter article
-              </Button>
-            </Link>
+              </Link>
+            </Button>
           </div>
         </div>
       </div>
@@ -380,9 +380,9 @@ export default function ListDetail() {
               <p className="text-lg text-muted-foreground mb-4">
                 Aucun article dans cette liste.
               </p>
-              <Link to={`/lists/${id}/items/new`}>
-                <Button>Ajouter votre premier article</Button>
-              </Link>
+              <Button asChild>
+                <Link to={`/lists/${id}/items/new`}>Ajouter votre premier article</Link>
+              </Button>
             </div>
           )}
 

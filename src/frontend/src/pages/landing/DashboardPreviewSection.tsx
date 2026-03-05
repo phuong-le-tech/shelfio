@@ -77,7 +77,7 @@ export function DashboardPreviewSection() {
         </BlurFade>
 
         <BlurFade delay={0.2} inView>
-          <div className="rounded-2xl border bg-card overflow-hidden shadow-float" role="img" aria-label="Apercu du tableau de bord">
+          <div className="rounded-2xl border bg-card overflow-hidden shadow-float">
             <div className="flex items-center gap-2 px-4 py-3 border-b bg-muted/30" aria-hidden="true">
               <div className="flex gap-1.5">
                 <span className="w-3 h-3 rounded-full bg-red-500/50" />

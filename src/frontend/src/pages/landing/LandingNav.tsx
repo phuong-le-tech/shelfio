@@ -15,14 +15,12 @@ export function LandingNav() {
           </span>
         </Link>
         <div className="flex items-center gap-3">
-          <Link to="/login">
-            <Button variant="ghost" size="sm">
-              Se connecter
-            </Button>
-          </Link>
-          <Link to="/signup">
-            <Button size="sm">Commencer</Button>
-          </Link>
+          <Button variant="ghost" size="sm" asChild>
+            <Link to="/login">Se connecter</Link>
+          </Button>
+          <Button size="sm" asChild>
+            <Link to="/signup">Commencer</Link>
+          </Button>
         </div>
       </div>
     </nav>

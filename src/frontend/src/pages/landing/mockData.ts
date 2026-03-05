@@ -27,21 +27,21 @@ export const MOCK_RECENT_ITEMS = [
     listName: "Electronique",
     quantity: 12,
     status: "IN_STOCK" as const,
-    lastUpdated: "2026-03-04",
+    lastUpdated: "2026-03-04T10:30:00",
   },
   {
     name: "Chaise ergonomique",
     listName: "Mobilier",
     quantity: 3,
     status: "LOW_STOCK" as const,
-    lastUpdated: "2026-03-03",
+    lastUpdated: "2026-03-03T14:15:00",
   },
   {
     name: "Cartouches d'encre",
     listName: "Fournitures Bureau",
     quantity: 0,
     status: "OUT_OF_STOCK" as const,
-    lastUpdated: "2026-03-02",
+    lastUpdated: "2026-03-02T09:45:00",
   },
 ];
 

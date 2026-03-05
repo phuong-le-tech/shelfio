@@ -33,12 +33,12 @@ export function HeroSection() {
         </BlurFade>
         <BlurFade delay={0.4} duration={0.6}>
           <div className="flex flex-col sm:flex-row items-center justify-center gap-4 mt-10">
-            <Link to="/signup">
-              <Button size="lg" className="h-12 px-8 text-base">
+            <Button size="lg" className="h-12 px-8 text-base" asChild>
+              <Link to="/signup">
                 Commencer gratuitement
                 <ArrowRight className="h-4 w-4 ml-2" aria-hidden="true" />
-              </Button>
-            </Link>
+              </Link>
+            </Button>
             <button
               onClick={() =>
                 document
@@ -79,12 +79,12 @@ export function CTASection() {
         </BlurFade>
         <BlurFade delay={0.3} inView>
           <div className="flex flex-col items-center gap-4">
-            <Link to="/signup">
-              <Button size="lg" className="h-12 px-8 text-base">
+            <Button size="lg" className="h-12 px-8 text-base" asChild>
+              <Link to="/signup">
                 Commencer gratuitement
                 <ArrowRight className="h-4 w-4 ml-2" aria-hidden="true" />
-              </Button>
-            </Link>
+              </Link>
+            </Button>
             <Link
               to="/login"
               className="text-sm text-muted-foreground hover:text-foreground transition-colors"

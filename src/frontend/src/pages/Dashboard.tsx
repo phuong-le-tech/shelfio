@@ -120,12 +120,12 @@ export default function Dashboard() {
           </BlurFade>
         </div>
         <BlurFade delay={0.3}>
-          <Link to="/items/new">
-            <Button className="font-medium bg-foreground text-background hover:bg-foreground/90">
+          <Button className="font-medium bg-foreground text-background hover:bg-foreground/90" asChild>
+            <Link to="/items/new">
               <Plus className="h-4 w-4 mr-2" />
               Ajouter un article
-            </Button>
-          </Link>
+            </Link>
+          </Button>
         </BlurFade>
       </div>
 
