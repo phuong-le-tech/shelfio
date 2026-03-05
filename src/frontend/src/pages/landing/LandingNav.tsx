@@ -8,7 +8,7 @@ export function LandingNav() {
       <div className="max-w-6xl mx-auto px-6 flex items-center justify-between h-16">
         <Link to="/" className="flex items-center gap-3" aria-label="Inventory - Accueil">
           <div className="w-9 h-9 bg-foreground rounded-xl flex items-center justify-center">
-            <Package className="h-4.5 w-4.5 text-background" aria-hidden="true" />
+            <Package className="h-[18px] w-[18px] text-background" aria-hidden="true" />
           </div>
           <span className="font-display text-xl font-semibold tracking-tight">
             Inventory

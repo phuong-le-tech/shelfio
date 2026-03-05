@@ -72,6 +72,7 @@ public class ResendEmailSender implements EmailSender {
 
     private static String obfuscateEmail(String email) {
         int atIndex = email.indexOf('@');
+        if (atIndex < 0) return "***";
         if (atIndex <= 1) return "***" + email.substring(atIndex);
         return email.charAt(0) + "***" + email.substring(atIndex);
     }

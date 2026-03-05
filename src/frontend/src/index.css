@@ -6,12 +6,6 @@
 @tailwind utilities;
 
 @layer base {
-  html {
-    @media (prefers-reduced-motion: no-preference) {
-      scroll-behavior: smooth;
-    }
-  }
-
   :root {
     --background: 0 0% 100%;
     --foreground: 0 0% 3.9%;
@@ -125,6 +119,12 @@
   body {
     @apply bg-background text-foreground font-sans antialiased;
     min-height: 100vh;
+  }
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  html {
+    scroll-behavior: smooth;
   }
 }
 

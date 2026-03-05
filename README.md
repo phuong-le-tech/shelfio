@@ -122,7 +122,7 @@ Copy `.env.example` to `.env.dev` and fill in the values. Key variables:
 | `DB_USERNAME`            | Yes      | `postgres`                      | Database user                                            |
 | `DB_PASSWORD`            | Yes      | `postgres`                      | Database password                                        |
 | `SPRING_PROFILES_ACTIVE` | No       | `dev`                           | Spring profile (`dev`, `prod`)                           |
-| `CORS_ALLOWED_ORIGINS`   | No       | `localhost:5173,localhost:3000`  | CORS allowed origins (comma-separated)                   |
+| `CORS_ALLOWED_ORIGINS`   | No       | `http://localhost:5173,http://localhost:3000` | CORS allowed origins (comma-separated)    |
 | `JWT_SECRET`             | Yes      | _(dev key)_                     | Secret for signing JWT tokens (min 32 chars)             |
 | `JWT_EXPIRATION_MS`      | No       | `86400000` (24 h)               | JWT token lifetime in milliseconds                       |
 | `COOKIE_SECURE`          | No       | `false`                         | Set `true` in production (HTTPS)                         |
