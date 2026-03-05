@@ -20,6 +20,13 @@ import {
   StaggeredItem,
 } from "@/components/effects/staggered-list";
 import { STATUS_LABELS, ItemStatus } from "../types/item";
+import { Badge } from "@/components/ui/badge";
+
+const statusToBadgeVariant: Record<string, "success" | "warning" | "error"> = {
+  IN_STOCK: "success",
+  LOW_STOCK: "warning",
+  OUT_OF_STOCK: "error",
+};
 
 export default function Dashboard() {
   const { stats, loading, error, reload } = useDashboardStats();
@@ -91,18 +98,13 @@ export default function Dashboard() {
   ];
 
   const listColors = [
-    "bg-blue-500",
-    "bg-emerald-500",
-    "bg-amber-500",
-    "bg-purple-500",
-    "bg-rose-500",
+    "bg-brand",
+    "bg-emerald-600",
+    "bg-teal-500",
+    "bg-cyan-500",
+    "bg-green-600",
   ];
 
-  const statusColors: Record<string, string> = {
-    IN_STOCK: "bg-status-success/20 text-status-success-text",
-    LOW_STOCK: "bg-status-warning/20 text-status-warning-text",
-    OUT_OF_STOCK: "bg-status-error/20 text-status-error-text",
-  };
 
   return (
     <div className="space-y-10 pb-10">
@@ -120,7 +122,7 @@ export default function Dashboard() {
           </BlurFade>
         </div>
         <BlurFade delay={0.3}>
-          <Button className="font-medium bg-foreground text-background hover:bg-foreground/90" asChild>
+          <Button className="font-medium" asChild>
             <Link to="/items/new">
               <Plus className="h-4 w-4 mr-2" />
               Ajouter un article
@@ -242,13 +244,10 @@ export default function Dashboard() {
                           <div className="font-medium text-foreground">
                             {item.name}
                           </div>
-                          <div className="text-xs text-muted-foreground truncate max-w-[200px] mt-0.5">
-                            {/* Assuming description might be loaded or just item name subtext */}
-                          </div>
                         </td>
                         <td className="px-5 py-4">
                           <div className="flex items-center gap-2">
-                            <div className="w-2 h-2 rounded-full bg-blue-500"></div>
+                            <div className="w-2 h-2 rounded-full bg-brand"></div>
                             <span className="text-foreground">
                               {item.listName}
                             </span>
@@ -261,12 +260,10 @@ export default function Dashboard() {
                           {item.quantity}
                         </td>
                         <td className="px-5 py-4">
-                          <span
-                            className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${statusColors[item.status] || "bg-muted text-muted-foreground"}`}
-                          >
+                          <Badge variant={statusToBadgeVariant[item.status] || "default"}>
                             {STATUS_LABELS[item.status as ItemStatus] ||
                               item.status}
-                          </span>
+                          </Badge>
                         </td>
                         <td className="px-5 py-4 text-muted-foreground hidden md:table-cell">
                           {new Date(item.lastUpdated).toLocaleDateString(
@@ -279,7 +276,7 @@ export default function Dashboard() {
                             variant="ghost"
                             size="icon"
                             aria-label="Options de l'article"
-                            className="h-8 w-8 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity"
+                            className="h-8 w-8 text-muted-foreground opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity"
                           >
                             <MoreVertical className="h-4 w-4" />
                           </Button>

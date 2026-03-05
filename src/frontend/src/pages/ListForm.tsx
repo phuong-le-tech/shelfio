@@ -18,7 +18,7 @@ import { Separator } from '@/components/ui/separator';
 import { BlurFade } from '@/components/effects/blur-fade';
 
 const PASTEL_BORDERS = [
-  'border-l-peach',
+  'border-l-brand',
   'border-l-status-verify',
   'border-l-status-pending',
   'border-l-status-ready',

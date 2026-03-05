@@ -80,8 +80,8 @@ export function LoginPage() {
         >
           <div className="mb-10">
             <BlurFade delay={0.2}>
-              <div className="w-12 h-12 bg-foreground rounded-xl flex items-center justify-center mb-6">
-                <svg aria-hidden="true" className="w-6 h-6 text-background" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <div className="w-12 h-12 bg-brand/10 rounded-xl flex items-center justify-center mb-6">
+                <svg aria-hidden="true" className="w-6 h-6 text-brand" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
                 </svg>
               </div>
@@ -97,14 +97,14 @@ export function LoginPage() {
           <div className="rounded-2xl border bg-card p-8 shadow-float">
             <form onSubmit={handleSubmit(onSubmit)} className="space-y-5">
               {verified && (
-                <div className="bg-green-50 border border-green-200 rounded-lg px-4 py-3 text-green-700 text-sm flex items-center gap-2">
+                <div className="bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-lg px-4 py-3 text-green-700 dark:text-green-400 text-sm flex items-center gap-2">
                   <CheckCircle className="h-4 w-4 flex-shrink-0" />
                   Email verifie avec succes ! Vous pouvez maintenant vous connecter.
                 </div>
               )}
 
               {reset && (
-                <div className="bg-green-50 border border-green-200 rounded-lg px-4 py-3 text-green-700 text-sm flex items-center gap-2">
+                <div className="bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-lg px-4 py-3 text-green-700 dark:text-green-400 text-sm flex items-center gap-2">
                   <CheckCircle className="h-4 w-4 flex-shrink-0" />
                   Mot de passe reinitialise avec succes ! Connectez-vous avec votre nouveau mot de passe.
                 </div>

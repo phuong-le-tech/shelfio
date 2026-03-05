@@ -1,6 +1,6 @@
 import { useEffect, useState, useCallback } from 'react';
 import { Link } from 'react-router-dom';
-import { Plus, Pencil, Trash2, ChevronLeft, ChevronRight, FolderOpen } from 'lucide-react';
+import { Plus, Pencil, Trash2, FolderOpen } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { listsApi } from '../services/api';
 import { ItemList, ItemListSearchParams } from '../types/item';
@@ -8,6 +8,7 @@ import { SkeletonCard, SkeletonText, Skeleton } from '../components/Skeleton';
 import { useToast } from '../components/Toast';
 import ConfirmModal from '../components/ConfirmModal';
 import { Button } from '@/components/ui/button';
+import { Pagination } from '@/components/Pagination';
 import { Badge } from '@/components/ui/badge';
 import { BlurFade } from '@/components/effects/blur-fade';
 import { SpotlightCard } from '@/components/effects/spotlight-card';
@@ -105,12 +106,12 @@ export default function ListsPage() {
 
       <StaggeredList className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         <AnimatePresence>
-          {lists.map((list, index) => (
-            <StaggeredItem key={list.id} className={index % 4 === 3 ? 'lg:col-span-2' : ''}>
+          {lists.map((list) => (
+            <StaggeredItem key={list.id}>
               <SpotlightCard className="group rounded-2xl border bg-card shadow-card transition-all duration-300 hover:shadow-elevated overflow-hidden">
                 <Link to={`/lists/${list.id}`} className="block p-6">
                   <div className="flex items-start justify-between mb-4">
-                    <div className="w-12 h-12 rounded-xl bg-peach-light flex items-center justify-center">
+                    <div className="w-12 h-12 rounded-xl bg-brand-light flex items-center justify-center">
                       <span className="font-display text-xl font-bold text-foreground">
                         {list.name[0]?.toUpperCase()}
                       </span>
@@ -119,7 +120,7 @@ export default function ListsPage() {
                       <Badge variant="secondary">{list.category}</Badge>
                     )}
                   </div>
-                  <h3 className="font-display text-lg font-semibold tracking-tight mb-1 group-hover:text-peach-dark transition-colors">
+                  <h3 className="font-display text-lg font-semibold tracking-tight mb-1 group-hover:text-brand-dark transition-colors">
                     {list.name}
                   </h3>
                   {list.description && (
@@ -176,31 +177,7 @@ export default function ListsPage() {
         </div>
       )}
 
-      {totalPages > 1 && (
-        <div className="flex items-center justify-center gap-4 mt-8">
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => setPage(p => Math.max(0, p - 1))}
-            disabled={page === 0}
-          >
-            <ChevronLeft className="h-4 w-4 mr-1" />
-            Precedent
-          </Button>
-          <span className="text-sm text-muted-foreground">
-            Page {page + 1} sur {totalPages}
-          </span>
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => setPage(p => Math.min(totalPages - 1, p + 1))}
-            disabled={page >= totalPages - 1}
-          >
-            Suivant
-            <ChevronRight className="h-4 w-4 ml-1" />
-          </Button>
-        </div>
-      )}
+      <Pagination page={page} totalPages={totalPages} onPageChange={setPage} />
 
       <ConfirmModal
         isOpen={pendingDeleteId !== null}

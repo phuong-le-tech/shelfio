@@ -30,8 +30,8 @@ export function FeaturesSection() {
           {FEATURES.map((feature, idx) => (
             <StaggeredItem key={idx}>
               <SpotlightCard className="rounded-2xl border bg-card p-6 shadow-card transition-all duration-300 hover:shadow-elevated h-full">
-                <div className="w-11 h-11 rounded-xl bg-secondary flex items-center justify-center mb-4">
-                  <feature.icon className="h-5 w-5 text-foreground" aria-hidden="true" />
+                <div className="w-11 h-11 rounded-xl bg-brand-light flex items-center justify-center mb-4">
+                  <feature.icon className="h-5 w-5 text-brand-dark" aria-hidden="true" />
                 </div>
                 <h3 className="font-display text-lg font-semibold tracking-tight mb-2">
                   {feature.title}
@@ -73,14 +73,14 @@ export function ListsPreviewSection() {
               <SpotlightCard className="group rounded-2xl border bg-card shadow-card transition-all duration-300 hover:shadow-elevated overflow-hidden">
                 <div className="p-6">
                   <div className="flex items-start justify-between mb-4">
-                    <div className="w-12 h-12 rounded-xl bg-peach-light flex items-center justify-center">
+                    <div className="w-12 h-12 rounded-xl bg-brand-light flex items-center justify-center">
                       <span className="font-display text-xl font-bold text-foreground">
                         {list.name[0]?.toUpperCase()}
                       </span>
                     </div>
                     <Badge variant="secondary">{list.category}</Badge>
                   </div>
-                  <h3 className="font-display text-lg font-semibold tracking-tight mb-1 group-hover:text-peach-dark transition-colors">
+                  <h3 className="font-display text-lg font-semibold tracking-tight mb-1 group-hover:text-brand-dark transition-colors">
                     {list.name}
                   </h3>
                   <p className="text-muted-foreground text-sm line-clamp-2 mb-3">

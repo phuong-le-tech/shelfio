@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { Plus, Trash2, Shield, User as UserIcon, ChevronLeft, ChevronRight, AlertCircle } from 'lucide-react';
+import { Plus, Trash2, Shield, User as UserIcon, AlertCircle } from 'lucide-react';
 import { motion } from 'motion/react';
 import { createUserSchema, CreateUserFormData } from '../../schemas/auth.schemas';
 import { User } from '../../types/auth';
@@ -10,6 +10,7 @@ import { useToast } from '../../components/Toast';
 import ConfirmModal from '../../components/ConfirmModal';
 import { getApiErrorStatus } from '../../utils/errorUtils';
 import { Button } from '@/components/ui/button';
+import { Pagination } from '@/components/Pagination';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
@@ -20,7 +21,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '
 import { BlurFade } from '@/components/effects/blur-fade';
 
 const PASTEL_COLORS = [
-  'bg-peach',
+  'bg-brand',
   'bg-status-verify',
   'bg-status-pending',
   'bg-status-ready',
@@ -208,31 +209,7 @@ export function UsersPage() {
           )}
         </div>
 
-        {totalPages > 1 && (
-          <div className="flex items-center justify-center gap-4 mt-8">
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => setPage(p => Math.max(0, p - 1))}
-              disabled={page === 0}
-            >
-              <ChevronLeft className="h-4 w-4 mr-1" />
-              Precedent
-            </Button>
-            <span className="text-sm text-muted-foreground">
-              Page {page + 1} sur {totalPages}
-            </span>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => setPage(p => Math.min(totalPages - 1, p + 1))}
-              disabled={page >= totalPages - 1}
-            >
-              Suivant
-              <ChevronRight className="h-4 w-4 ml-1" />
-            </Button>
-          </div>
-        )}
+        <Pagination page={page} totalPages={totalPages} onPageChange={setPage} />
 
         <ConfirmModal
           isOpen={pendingDeleteId !== null}
