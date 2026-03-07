@@ -113,6 +113,7 @@ class CookieServiceTest {
             assertThat(cookie.getValue()).isEmpty();
             assertThat(cookie.getMaxAge()).isZero();
             assertThat(cookie.isHttpOnly()).isTrue();
+            assertThat(cookie.getSecure()).isTrue();
             assertThat(cookie.getPath()).isEqualTo("/");
         }
 
