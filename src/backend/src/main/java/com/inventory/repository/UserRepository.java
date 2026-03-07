@@ -23,9 +23,19 @@ public interface UserRepository extends JpaRepository<User, UUID> {
     boolean existsByEmail(String email);
     long countByRole(Role role);
 
+    Optional<User> findByStripeCustomerId(String stripeCustomerId);
+
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("SELECT u FROM User u WHERE u.stripeCustomerId = :customerId")
+    Optional<User> findByStripeCustomerIdWithLock(@Param("customerId") String customerId);
+
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("SELECT u FROM User u WHERE u.id = :id")
     Optional<User> findByIdWithLock(@Param("id") UUID id);
+
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("SELECT u FROM User u WHERE u.stripePaymentId = :paymentIntentId")
+    Optional<User> findByStripePaymentIdWithLock(@Param("paymentIntentId") String paymentIntentId);
 
     @Override
     @NonNull

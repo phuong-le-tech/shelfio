@@ -34,7 +34,7 @@ public class AuthController {
             HttpServletRequest httpRequest,
             HttpServletResponse response
     ) {
-        loginRateLimiter.checkRateLimit(httpRequest);
+        loginRateLimiter.checkRateLimit(httpRequest, request.email());
         return ResponseEntity.ok(authService.login(request, response));
     }
 
@@ -44,7 +44,7 @@ public class AuthController {
             HttpServletRequest httpRequest,
             HttpServletResponse response
     ) {
-        loginRateLimiter.checkRateLimit(httpRequest);
+        loginRateLimiter.checkRateLimit(httpRequest, request.email());
         return ResponseEntity.status(HttpStatus.CREATED)
                 .body(authService.signup(request, response));
     }
@@ -84,7 +84,7 @@ public class AuthController {
             @Valid @RequestBody ForgotPasswordRequest request,
             HttpServletRequest httpRequest
     ) {
-        loginRateLimiter.checkRateLimit(httpRequest);
+        loginRateLimiter.checkRateLimit(httpRequest, request.email());
         authService.forgotPassword(request.email());
         return ResponseEntity.ok().build();
     }

@@ -8,6 +8,7 @@ import com.inventory.exception.ItemListNotFoundException;
 import com.inventory.exception.ItemNotFoundException;
 import com.inventory.model.Item;
 import com.inventory.model.ItemList;
+import com.inventory.model.User;
 import com.inventory.repository.ItemListRepository;
 import com.inventory.repository.ItemRepository;
 import com.inventory.security.SecurityUtils;
@@ -61,16 +62,23 @@ class ItemServiceImplTest {
     private ItemList testList;
     private UUID testId;
     private UUID testListId;
+    private UUID testUserId;
 
     @BeforeEach
     void setUp() {
         testId = UUID.randomUUID();
         testListId = UUID.randomUUID();
+        testUserId = UUID.randomUUID();
+
+        User testUser = new User();
+        testUser.setId(testUserId);
+        testUser.setEmail("test@example.com");
 
         testList = new ItemList();
         testList.setId(testListId);
         testList.setName("Test List");
         testList.setCategory("Electronics");
+        testList.setUser(testUser);
 
         testItem = new Item();
         testItem.setId(testId);
@@ -91,6 +99,8 @@ class ItemServiceImplTest {
             ItemSearchCriteria criteria = new ItemSearchCriteria(null, null, null);
             Page<Item> expectedPage = new PageImpl<>(Objects.requireNonNull(List.of(testItem), "List of items not found"));
 
+            when(securityUtils.isAdmin()).thenReturn(false);
+            when(securityUtils.getCurrentUserId()).thenReturn(Optional.of(testUserId));
             when(itemRepository.findAll(any(Specification.class), eq(pageable))).thenReturn(expectedPage);
 
             Page<Item> result = itemService.getAllItems(pageable, criteria);
@@ -109,6 +119,8 @@ class ItemServiceImplTest {
         @DisplayName("should return item when exists")
         void getItemById_existingId_returnsItem() {
             when(itemRepository.findById(testId)).thenReturn(Optional.of(testItem));
+            when(securityUtils.isAdmin()).thenReturn(false);
+            when(securityUtils.getCurrentUserId()).thenReturn(Optional.of(testUserId));
 
             Optional<Item> result = itemService.getItemById(testId);
 
@@ -244,19 +256,21 @@ class ItemServiceImplTest {
         @Test
         @DisplayName("should delete existing item")
         void deleteItem_existingId_deletesItem() {
-            when(itemRepository.existsById(testId)).thenReturn(true);
-            doNothing().when(itemRepository).deleteById(testId);
+            when(itemRepository.findById(testId)).thenReturn(Optional.of(testItem));
+            when(securityUtils.isAdmin()).thenReturn(false);
+            when(securityUtils.getCurrentUserId()).thenReturn(Optional.of(testUserId));
+            doNothing().when(itemRepository).delete(testItem);
 
             itemService.deleteItem(testId);
 
-            verify(itemRepository).deleteById(testId);
+            verify(itemRepository).delete(testItem);
         }
 
         @Test
         @DisplayName("should throw exception when item not found")
         void deleteItem_nonExistingId_throwsException() {
             UUID nonExistingId = UUID.randomUUID();
-            when(itemRepository.existsById(nonExistingId)).thenReturn(false);
+            when(itemRepository.findById(nonExistingId)).thenReturn(Optional.empty());
 
             assertThatThrownBy(() -> itemService.deleteItem(nonExistingId))
                     .isInstanceOf(ItemNotFoundException.class);

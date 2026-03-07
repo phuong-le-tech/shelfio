@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { Settings, LogOut, Trash2, ChevronUp } from "lucide-react";
+import { Settings, LogOut, Trash2, ChevronUp, Crown } from "lucide-react";
 import { useAuth } from "../contexts/AuthContext";
 import {
   DropdownMenu,
@@ -13,7 +13,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import ConfirmModal from "./ConfirmModal";
 
 export function UserMenu() {
-  const { user, logout, deleteAccount, isAdmin } = useAuth();
+  const { user, logout, deleteAccount, isAdmin, isPremium } = useAuth();
   const navigate = useNavigate();
   const [showDeleteModal, setShowDeleteModal] = useState(false);
 
@@ -42,14 +42,27 @@ export function UserMenu() {
             </Avatar>
             <div className="flex-1 min-w-0">
               <p className="text-sm font-medium truncate">{user.email}</p>
-              <p className="text-xs text-muted-foreground capitalize">
-                {user.role.toLowerCase()}
+              <p className="text-xs text-muted-foreground capitalize flex items-center gap-1">
+                {user.role === 'PREMIUM_USER' ? (
+                  <><Crown className="w-3 h-3" /> Premium</>
+                ) : (
+                  user.role.toLowerCase()
+                )}
               </p>
             </div>
             <ChevronUp className="w-4 h-4 text-muted-foreground" />
           </button>
         </DropdownMenuTrigger>
         <DropdownMenuContent side="top" align="start" className="w-56">
+          {!isPremium && (
+            <>
+              <DropdownMenuItem onClick={() => navigate("/upgrade")}>
+                <Crown className="w-4 h-4 mr-2" />
+                Passer en Premium
+              </DropdownMenuItem>
+              <DropdownMenuSeparator />
+            </>
+          )}
           {isAdmin && (
             <>
               <DropdownMenuItem onClick={() => navigate("/admin/users")}>

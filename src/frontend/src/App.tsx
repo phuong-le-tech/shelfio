@@ -12,6 +12,9 @@ const ListDetail = lazy(() => import('./pages/ListDetail'));
 const ListForm = lazy(() => import('./pages/ListForm'));
 const ItemForm = lazy(() => import('./pages/ItemForm'));
 const UsersPage = lazy(() => import('./pages/admin/UsersPage').then(m => ({ default: m.UsersPage })));
+const UpgradePage = lazy(() => import('./pages/UpgradePage'));
+const PaymentSuccess = lazy(() => import('./pages/PaymentSuccess'));
+const PaymentCancel = lazy(() => import('./pages/PaymentCancel'));
 const NotFound = lazy(() => import('./pages/NotFound'));
 const PrivacyPolicy = lazy(() => import('./pages/PrivacyPolicy').then(m => ({ default: m.PrivacyPolicy })));
 const TermsOfService = lazy(() => import('./pages/TermsOfService').then(m => ({ default: m.TermsOfService })));
@@ -44,6 +47,9 @@ export default function App() {
                 <Route path="/lists/:id/edit" element={<ListForm />} />
                 <Route path="/lists/:listId/items/new" element={<ItemForm />} />
                 <Route path="/lists/:listId/items/:itemId/edit" element={<ItemForm />} />
+                <Route path="/upgrade" element={<UpgradePage />} />
+                <Route path="/payment/success" element={<PaymentSuccess />} />
+                <Route path="/payment/cancel" element={<PaymentCancel />} />
                 <Route
                   path="/admin/users"
                   element={

@@ -60,13 +60,19 @@ public class ItemServiceImpl implements IItemService {
     @Transactional(readOnly = true)
     public Page<Item> getAllItems(@NonNull Pageable pageable,
         @NonNull ItemSearchCriteria criteria) {
-        return itemRepository.findAll(ItemSpecification.withCriteria(criteria), pageable);
+        UUID userId = null;
+        if (!securityUtils.isAdmin()) {
+            userId = securityUtils.getCurrentUserId()
+                    .orElseThrow(() -> new UnauthorizedException("Not authenticated"));
+        }
+        return itemRepository.findAll(ItemSpecification.withCriteria(criteria, userId), pageable);
     }
 
     @Override
     @Transactional(readOnly = true)
     public Optional<Item> getItemById(@NonNull UUID id) {
-        return itemRepository.findById(id);
+        return itemRepository.findById(id)
+                .map(this::checkItemOwnership);
     }
 
     @Override
@@ -125,10 +131,10 @@ public class ItemServiceImpl implements IItemService {
     @Override
     @Transactional
     public void deleteItem(@NonNull UUID id) {
-        if (!itemRepository.existsById(id)) {
-            throw new ItemNotFoundException(id);
-        }
-        itemRepository.deleteById(id);
+        Item item = itemRepository.findById(id)
+                .orElseThrow(() -> new ItemNotFoundException(id));
+        checkItemOwnership(item);
+        itemRepository.delete(item);
     }
 
     @Override
@@ -192,6 +198,17 @@ public class ItemServiceImpl implements IItemService {
 
         return new DashboardStats(totalItems, totalQuantity, lowStockCount, outOfStockCount,
                 statusCounts, categoryCounts, listsOverview, recentlyUpdated);
+    }
+
+    private Item checkItemOwnership(Item item) {
+        if (!securityUtils.isAdmin()) {
+            UUID userId = securityUtils.getCurrentUserId()
+                    .orElseThrow(() -> new UnauthorizedException("Not authenticated"));
+            if (!item.getItemList().getUser().getId().equals(userId)) {
+                throw new ItemNotFoundException(item.getId());
+            }
+        }
+        return item;
     }
 
     private ItemList findListWithOwnershipCheck(UUID listId) {

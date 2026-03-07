@@ -38,6 +38,7 @@ public class AdminController {
             @RequestParam(defaultValue = "createdAt") String sortBy,
             @RequestParam(defaultValue = "desc") String sortDir
     ) {
+        size = Math.min(Math.max(size, 1), 100);
         if (!ALLOWED_SORT_FIELDS.contains(sortBy)) {
             sortBy = "createdAt";
         }

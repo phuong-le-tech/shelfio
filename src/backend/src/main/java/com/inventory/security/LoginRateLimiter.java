@@ -8,17 +8,32 @@ import org.springframework.stereotype.Component;
 @Component
 public class LoginRateLimiter {
 
-    private final ApiRateLimiter rateLimiter;
+    private final ApiRateLimiter ipRateLimiter;
+    private final ApiRateLimiter emailRateLimiter;
 
-    public LoginRateLimiter(@Qualifier("loginApiRateLimiter") ApiRateLimiter rateLimiter) {
-        this.rateLimiter = rateLimiter;
+    public LoginRateLimiter(
+            @Qualifier("loginApiRateLimiter") ApiRateLimiter ipRateLimiter,
+            @Qualifier("emailLoginRateLimiter") ApiRateLimiter emailRateLimiter) {
+        this.ipRateLimiter = ipRateLimiter;
+        this.emailRateLimiter = emailRateLimiter;
     }
 
     public void checkRateLimit(HttpServletRequest request) {
         String ip = ClientIpResolver.resolve(request);
-        ApiRateLimiter.RateLimitResult result = rateLimiter.tryAcquire(ip);
+        ApiRateLimiter.RateLimitResult result = ipRateLimiter.tryAcquire(ip);
         if (!result.allowed()) {
             throw new RateLimitExceededException("Too many login attempts. Please try again later.");
+        }
+    }
+
+    public void checkRateLimit(HttpServletRequest request, String email) {
+        checkRateLimit(request);
+        if (email != null && !email.isBlank()) {
+            String emailKey = "email:" + email.toLowerCase();
+            ApiRateLimiter.RateLimitResult result = emailRateLimiter.tryAcquire(emailKey);
+            if (!result.allowed()) {
+                throw new RateLimitExceededException("Too many attempts for this account. Please try again later.");
+            }
         }
     }
 }

@@ -1,7 +1,9 @@
 package com.inventory.service.impl;
 
 import com.inventory.dto.request.ItemListRequest;
+import com.inventory.enums.Role;
 import com.inventory.exception.ItemListNotFoundException;
+import com.inventory.exception.ListLimitExceededException;
 import com.inventory.exception.UnauthorizedException;
 import com.inventory.model.ItemList;
 import com.inventory.model.User;
@@ -58,8 +60,17 @@ public class ItemListServiceImpl implements IItemListService {
     public ItemList createList(@NonNull ItemListRequest request) {
         UUID userId = requireCurrentUserId();
 
-        User user = userRepository.findById(userId)
+        // Use pessimistic lock to prevent race condition on concurrent list creation
+        User user = userRepository.findByIdWithLock(userId)
                 .orElseThrow(() -> new UnauthorizedException("User not found"));
+
+        if (user.getRole() == Role.USER) {
+            long count = itemListRepository.countByUserId(userId);
+            if (count >= 5) {
+                throw new ListLimitExceededException(
+                        "Free plan limited to 5 lists. Upgrade to Premium for unlimited lists.");
+            }
+        }
 
         customFieldValidator.validateDefinitionNames(request.customFieldDefinitions());
 

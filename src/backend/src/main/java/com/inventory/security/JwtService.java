@@ -23,7 +23,7 @@ import java.util.UUID;
 @Service
 public class JwtService {
 
-    private static final String DEV_SECRET = "dev-only-secret-key-minimum-32-characters-long";
+    private static final int MIN_UNIQUE_CHARS = 10;
 
     @Value("${app.jwt.secret}")
     private String jwtSecret;
@@ -43,8 +43,13 @@ public class JwtService {
             throw new IllegalStateException(
                     "JWT_SECRET is not set or too short (minimum 32 characters). Application cannot start.");
         }
+        long uniqueChars = jwtSecret.chars().distinct().count();
+        if (uniqueChars < MIN_UNIQUE_CHARS) {
+            throw new IllegalStateException(
+                    "JWT_SECRET has insufficient entropy (too few unique characters). Generate with: openssl rand -base64 32");
+        }
         boolean isProd = Arrays.asList(environment.getActiveProfiles()).contains("prod");
-        if (isProd && DEV_SECRET.equals(jwtSecret)) {
+        if (isProd && jwtSecret.startsWith("dev-only-")) {
             throw new IllegalStateException(
                     "Dev JWT secret detected in production! Set a unique JWT_SECRET environment variable.");
         }

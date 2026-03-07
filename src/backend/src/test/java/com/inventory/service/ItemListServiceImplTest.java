@@ -1,7 +1,9 @@
 package com.inventory.service;
 
 import com.inventory.dto.request.ItemListRequest;
+import com.inventory.enums.Role;
 import com.inventory.exception.ItemListNotFoundException;
+import com.inventory.exception.ListLimitExceededException;
 import com.inventory.exception.UnauthorizedException;
 import com.inventory.model.ItemList;
 import com.inventory.model.User;
@@ -179,7 +181,7 @@ class ItemListServiceImplTest {
         void createList_success() {
             ItemListRequest request = new ItemListRequest("New List", "Description", "Category", null);
             when(securityUtils.getCurrentUserId()).thenReturn(Optional.of(testUserId));
-            when(userRepository.findById(testUserId)).thenReturn(Optional.of(testUser));
+            when(userRepository.findByIdWithLock(testUserId)).thenReturn(Optional.of(testUser));
             when(itemListRepository.save(any(ItemList.class))).thenAnswer(invocation -> {
                 ItemList saved = invocation.getArgument(0);
                 saved.setId(UUID.randomUUID());
@@ -202,6 +204,78 @@ class ItemListServiceImplTest {
 
             assertThatThrownBy(() -> itemListService.createList(request))
                     .isInstanceOf(UnauthorizedException.class);
+        }
+
+        @Test
+        @DisplayName("free user should be blocked at 5 lists")
+        void freeUser_blockedAtLimit() {
+            testUser.setRole(Role.USER);
+            ItemListRequest request = new ItemListRequest("Sixth List", null, null, null);
+            when(securityUtils.getCurrentUserId()).thenReturn(Optional.of(testUserId));
+            when(userRepository.findByIdWithLock(testUserId)).thenReturn(Optional.of(testUser));
+            when(itemListRepository.countByUserId(testUserId)).thenReturn(5L);
+
+            assertThatThrownBy(() -> itemListService.createList(request))
+                    .isInstanceOf(ListLimitExceededException.class)
+                    .hasMessageContaining("5 lists");
+        }
+
+        @Test
+        @DisplayName("free user should be allowed under 5 lists")
+        void freeUser_allowedUnderLimit() {
+            testUser.setRole(Role.USER);
+            ItemListRequest request = new ItemListRequest("Fourth List", null, null, null);
+            when(securityUtils.getCurrentUserId()).thenReturn(Optional.of(testUserId));
+            when(userRepository.findByIdWithLock(testUserId)).thenReturn(Optional.of(testUser));
+            when(itemListRepository.countByUserId(testUserId)).thenReturn(3L);
+            when(itemListRepository.save(any(ItemList.class))).thenAnswer(invocation -> {
+                ItemList saved = invocation.getArgument(0);
+                saved.setId(UUID.randomUUID());
+                return saved;
+            });
+
+            ItemList result = itemListService.createList(request);
+
+            assertThat(result.getName()).isEqualTo("Fourth List");
+            verify(itemListRepository).save(any(ItemList.class));
+        }
+
+        @Test
+        @DisplayName("premium user should have no list limit")
+        void premiumUser_noLimit() {
+            testUser.setRole(Role.PREMIUM_USER);
+            ItemListRequest request = new ItemListRequest("Unlimited List", null, null, null);
+            when(securityUtils.getCurrentUserId()).thenReturn(Optional.of(testUserId));
+            when(userRepository.findByIdWithLock(testUserId)).thenReturn(Optional.of(testUser));
+            when(itemListRepository.save(any(ItemList.class))).thenAnswer(invocation -> {
+                ItemList saved = invocation.getArgument(0);
+                saved.setId(UUID.randomUUID());
+                return saved;
+            });
+
+            ItemList result = itemListService.createList(request);
+
+            assertThat(result.getName()).isEqualTo("Unlimited List");
+            verify(itemListRepository, never()).countByUserId(any());
+        }
+
+        @Test
+        @DisplayName("admin should have no list limit")
+        void admin_noLimit() {
+            testUser.setRole(Role.ADMIN);
+            ItemListRequest request = new ItemListRequest("Admin List", null, null, null);
+            when(securityUtils.getCurrentUserId()).thenReturn(Optional.of(testUserId));
+            when(userRepository.findByIdWithLock(testUserId)).thenReturn(Optional.of(testUser));
+            when(itemListRepository.save(any(ItemList.class))).thenAnswer(invocation -> {
+                ItemList saved = invocation.getArgument(0);
+                saved.setId(UUID.randomUUID());
+                return saved;
+            });
+
+            ItemList result = itemListService.createList(request);
+
+            assertThat(result.getName()).isEqualTo("Admin List");
+            verify(itemListRepository, never()).countByUserId(any());
         }
     }
 

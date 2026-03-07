@@ -1,9 +1,10 @@
 import { useEffect, useState, useCallback } from 'react';
 import { Link } from 'react-router-dom';
-import { Plus, Pencil, Trash2, FolderOpen } from 'lucide-react';
+import { Plus, Pencil, Trash2, FolderOpen, Crown } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { listsApi } from '../services/api';
 import { ItemList, ItemListSearchParams } from '../types/item';
+import { useAuth } from '../contexts/AuthContext';
 import { SkeletonCard, SkeletonText, Skeleton } from '../components/Skeleton';
 import { useToast } from '../components/Toast';
 import ConfirmModal from '../components/ConfirmModal';
@@ -14,6 +15,9 @@ import { BlurFade } from '@/components/effects/blur-fade';
 import { SpotlightCard } from '@/components/effects/spotlight-card';
 import { StaggeredList, StaggeredItem } from '@/components/effects/staggered-list';
 
+// Must match backend ItemListServiceImpl.MAX_FREE_LISTS
+const FREE_LIST_LIMIT = 5;
+
 export default function ListsPage() {
   const [lists, setLists] = useState<ItemList[]>([]);
   const [loading, setLoading] = useState(true);
@@ -23,6 +27,7 @@ export default function ListsPage() {
   const [totalPages, setTotalPages] = useState(0);
   const [totalElements, setTotalElements] = useState(0);
   const { showToast } = useToast();
+  const { isPremium } = useAuth();
 
   const loadLists = useCallback(async () => {
     setLoading(true);
@@ -95,14 +100,55 @@ export default function ListsPage() {
           </BlurFade>
         </div>
         <BlurFade delay={0.2}>
-          <Button asChild>
-            <Link to="/lists/new">
-              <Plus className="h-4 w-4 mr-2" />
-              Nouvelle liste
-            </Link>
-          </Button>
+          {!isPremium && totalElements >= FREE_LIST_LIMIT ? (
+            <Button asChild>
+              <Link to="/upgrade">
+                <Crown className="h-4 w-4 mr-2" />
+                Passer en Premium
+              </Link>
+            </Button>
+          ) : (
+            <Button asChild>
+              <Link to="/lists/new">
+                <Plus className="h-4 w-4 mr-2" />
+                Nouvelle liste
+              </Link>
+            </Button>
+          )}
         </BlurFade>
       </div>
+
+      {/* Upgrade banners for free users */}
+      {!isPremium && totalElements === FREE_LIST_LIMIT - 1 && (
+        <BlurFade delay={0.3}>
+          <div className="rounded-xl border border-brand/30 bg-brand-light/50 p-4 mb-2 flex items-center justify-between">
+            <p className="text-sm text-foreground">
+              <span className="font-medium">1 liste restante</span> sur votre plan gratuit
+            </p>
+            <Button variant="outline" size="sm" asChild>
+              <Link to="/upgrade">Voir les offres</Link>
+            </Button>
+          </div>
+        </BlurFade>
+      )}
+      {!isPremium && totalElements >= FREE_LIST_LIMIT && (
+        <BlurFade delay={0.3}>
+          <div className="rounded-xl border-2 border-brand bg-brand-light/50 p-4 mb-2 flex items-center justify-between">
+            <div>
+              <p className="text-sm font-medium text-foreground">Limite atteinte</p>
+              <p className="text-sm text-muted-foreground">
+                Passez en Premium pour des listes illimitees — 2€ (paiement unique)
+              </p>
+            </div>
+            <Button size="sm" asChild>
+              <Link to="/upgrade">
+                <Crown className="h-3.5 w-3.5 mr-1.5" />
+                Passer en Premium
+              </Link>
+            </Button>
+          </div>
+        </BlurFade>
+      )}
 
       <StaggeredList className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         <AnimatePresence>

@@ -9,6 +9,7 @@ import com.inventory.enums.ItemStatus;
 import com.inventory.exception.ItemNotFoundException;
 import com.inventory.model.Item;
 import com.inventory.model.ItemList;
+import com.inventory.security.CustomUserDetails;
 import com.inventory.service.IItemService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -35,11 +36,12 @@ import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.doNothing;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.when;
+import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.user;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
 @SpringBootTest
-@AutoConfigureMockMvc(addFilters = false)
+@AutoConfigureMockMvc
 @Import(TestSecurityConfig.class)
 @ActiveProfiles("test")
 @DisplayName("ItemController Tests")
@@ -87,7 +89,8 @@ class ItemControllerTest {
             when(itemService.getAllItems(any(Pageable.class), any(ItemSearchCriteria.class)))
                     .thenReturn(new PageImpl<>(List.of(testItem)));
 
-            mockMvc.perform(get("/api/v1/items"))
+            mockMvc.perform(get("/api/v1/items")
+                            .with(user(new CustomUserDetails(UUID.randomUUID(), "test@test.com", "USER"))))
                     .andExpect(status().isOk())
                     .andExpect(jsonPath("$.data.content").isArray())
                     .andExpect(jsonPath("$.data.content[0].name").value("Test Item"))
@@ -104,7 +107,8 @@ class ItemControllerTest {
                             .param("page", "0")
                             .param("size", "10")
                             .param("sortBy", "name")
-                            .param("sortDir", "asc"))
+                            .param("sortDir", "asc")
+                            .with(user(new CustomUserDetails(UUID.randomUUID(), "test@test.com", "USER"))))
                     .andExpect(status().isOk());
         }
     }
@@ -118,7 +122,8 @@ class ItemControllerTest {
         void getItem_existingId_returnsItem() throws Exception {
             when(itemService.getItemById(testId)).thenReturn(Optional.of(testItem));
 
-            mockMvc.perform(get("/api/v1/items/{id}", testId))
+            mockMvc.perform(get("/api/v1/items/{id}", testId)
+                            .with(user(new CustomUserDetails(UUID.randomUUID(), "test@test.com", "USER"))))
                     .andExpect(status().isOk())
                     .andExpect(jsonPath("$.data.id").value(testId.toString()))
                     .andExpect(jsonPath("$.data.name").value("Test Item"))
@@ -132,7 +137,8 @@ class ItemControllerTest {
             when(itemService.getItemById(nonExistingId))
                     .thenReturn(Optional.empty());
 
-            mockMvc.perform(get("/api/v1/items/{id}", nonExistingId))
+            mockMvc.perform(get("/api/v1/items/{id}", nonExistingId)
+                            .with(user(new CustomUserDetails(UUID.randomUUID(), "test@test.com", "USER"))))
                     .andExpect(status().isNotFound());
         }
     }
@@ -150,7 +156,8 @@ class ItemControllerTest {
             String jsonData = objectMapper.writeValueAsString(request);
 
             mockMvc.perform(multipart("/api/v1/items")
-                            .param("data", jsonData))
+                            .param("data", jsonData)
+                            .with(user(new CustomUserDetails(UUID.randomUUID(), "test@test.com", "USER"))))
                     .andExpect(status().isCreated())
                     .andExpect(jsonPath("$.data.name").value("Test Item"));
         }
@@ -167,7 +174,8 @@ class ItemControllerTest {
 
             mockMvc.perform(multipart("/api/v1/items")
                             .file(imagePart)
-                            .param("data", jsonData))
+                            .param("data", jsonData)
+                            .with(user(new CustomUserDetails(UUID.randomUUID(), "test@test.com", "USER"))))
                     .andExpect(status().isCreated());
         }
     }
@@ -193,6 +201,7 @@ class ItemControllerTest {
 
             mockMvc.perform(multipart("/api/v1/items/{id}", testId)
                             .param("data", jsonData)
+                            .with(user(new CustomUserDetails(UUID.randomUUID(), "test@test.com", "USER")))
                             .with(req -> {
                                 req.setMethod("PATCH");
                                 return req;
@@ -212,7 +221,8 @@ class ItemControllerTest {
         void deleteItem_existingId_returns204() throws Exception {
             doNothing().when(itemService).deleteItem(testId);
 
-            mockMvc.perform(delete("/api/v1/items/{id}", testId))
+            mockMvc.perform(delete("/api/v1/items/{id}", testId)
+                            .with(user(new CustomUserDetails(UUID.randomUUID(), "test@test.com", "USER"))))
                     .andExpect(status().isNoContent());
         }
 
@@ -222,7 +232,8 @@ class ItemControllerTest {
             UUID nonExistingId = UUID.randomUUID();
             doThrow(new ItemNotFoundException(nonExistingId)).when(itemService).deleteItem(nonExistingId);
 
-            mockMvc.perform(delete("/api/v1/items/{id}", nonExistingId))
+            mockMvc.perform(delete("/api/v1/items/{id}", nonExistingId)
+                            .with(user(new CustomUserDetails(UUID.randomUUID(), "test@test.com", "USER"))))
                     .andExpect(status().isNotFound());
         }
     }
@@ -242,7 +253,8 @@ class ItemControllerTest {
             );
             when(itemService.getDashboardStats()).thenReturn(stats);
 
-            mockMvc.perform(get("/api/v1/items/stats"))
+            mockMvc.perform(get("/api/v1/items/stats")
+                            .with(user(new CustomUserDetails(UUID.randomUUID(), "test@test.com", "USER"))))
                     .andExpect(status().isOk())
                     .andExpect(jsonPath("$.data.totalItems").value(10))
                     .andExpect(jsonPath("$.data.countByStatus.IN_STOCK").value(5))

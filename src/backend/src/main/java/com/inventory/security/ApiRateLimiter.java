@@ -1,6 +1,7 @@
 package com.inventory.security;
 
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.List;
 import java.util.concurrent.ConcurrentHashMap;
 import lombok.extern.slf4j.Slf4j;
@@ -43,12 +44,15 @@ public class ApiRateLimiter {
         var result = new java.util.concurrent.atomic.AtomicReference<>(new RateLimitResult(false, 0));
 
         requests.compute(key, (k, existing) -> {
-            // Emergency eviction when at capacity for a new key
+            // LRU eviction when at capacity for a new key
             if (existing == null && requests.size() >= MAX_ENTRIES) {
                 evictExpiredEntries(windowStart);
             }
             if (existing == null && requests.size() >= MAX_ENTRIES) {
-                log.warn("Rate limiter at capacity ({} entries) after eviction, rejecting new key", MAX_ENTRIES);
+                evictLruEntries(MAX_ENTRIES / 10);
+            }
+            if (existing == null && requests.size() >= MAX_ENTRIES) {
+                log.warn("Rate limiter at capacity ({} entries) after LRU eviction, rejecting new key", MAX_ENTRIES);
                 result.set(new RateLimitResult(false, 0));
                 return null;
             }
@@ -78,5 +82,15 @@ public class ApiRateLimiter {
             entry.getValue().removeIf(t -> t < windowStart);
             return entry.getValue().isEmpty();
         });
+    }
+
+    private void evictLruEntries(int count) {
+        requests.entrySet().stream()
+            .sorted(Comparator.comparingLong(e -> e.getValue().stream().mapToLong(Long::longValue).max().orElse(0L)))
+            .limit(count)
+            .map(java.util.Map.Entry::getKey)
+            .toList()
+            .forEach(requests::remove);
+        log.info("LRU evicted up to {} rate limiter entries", count);
     }
 }
