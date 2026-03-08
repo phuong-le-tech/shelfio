@@ -20,6 +20,10 @@ import org.springframework.lang.NonNull;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
+import com.inventory.exception.RateLimitExceededException;
+import com.inventory.security.ApiRateLimiter;
+import com.inventory.security.CustomUserDetails;
+
 import jakarta.validation.ConstraintViolation;
 import jakarta.validation.ConstraintViolationException;
 import jakarta.validation.Validator;
@@ -28,6 +32,9 @@ import java.io.IOException;
 import java.util.Objects;
 import java.util.Set;
 import java.util.UUID;
+
+import org.springframework.beans.factory.annotation.Qualifier;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 
 @RestController
 @RequestMapping("/api/v1/items")
@@ -38,11 +45,14 @@ public class ItemController {
     private final IItemService itemService;
     private final ObjectMapper objectMapper;
     private final Validator validator;
+    private final ApiRateLimiter uploadRateLimiter;
 
-    public ItemController(IItemService itemService, ObjectMapper objectMapper, Validator validator) {
+    public ItemController(IItemService itemService, ObjectMapper objectMapper, Validator validator,
+                          @Qualifier("uploadRateLimiter") ApiRateLimiter uploadRateLimiter) {
         this.itemService = itemService;
         this.objectMapper = objectMapper;
         this.validator = validator;
+        this.uploadRateLimiter = uploadRateLimiter;
     }
 
     @GetMapping
@@ -53,6 +63,7 @@ public class ItemController {
             @RequestParam(defaultValue = "desc") String sortDir,
             @ModelAttribute @NonNull ItemSearchCriteria criteria) {
 
+        size = Math.min(Math.max(size, 1), 100);
         if (!ALLOWED_SORT_FIELDS.contains(sortBy)) {
             sortBy = "createdAt";
         }
@@ -89,8 +100,12 @@ public class ItemController {
 
     @PostMapping(consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     public ResponseEntity<ItemResponse> createItem(
+            @AuthenticationPrincipal CustomUserDetails userDetails,
             @RequestParam("data") @NonNull String data,
             @RequestParam(value = "image", required = false) MultipartFile image) throws IOException {
+        if (!uploadRateLimiter.tryAcquire("upload:user:" + userDetails.getId()).allowed()) {
+            throw new RateLimitExceededException("Too many upload requests. Please try again later.");
+        }
         ItemRequest request = objectMapper.readValue(data, ItemRequest.class);
         Objects.requireNonNull(request, "Item request data must not be null");
         Set<ConstraintViolation<ItemRequest>> violations = validator.validate(request);
@@ -103,9 +118,13 @@ public class ItemController {
 
     @PatchMapping(value = "/{id}", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     public ItemResponse updateItem(
+            @AuthenticationPrincipal CustomUserDetails userDetails,
             @PathVariable @NonNull UUID id,
             @RequestParam("data") @NonNull String data,
             @RequestParam(value = "image", required = false) MultipartFile image) throws IOException {
+        if (!uploadRateLimiter.tryAcquire("upload:user:" + userDetails.getId()).allowed()) {
+            throw new RateLimitExceededException("Too many upload requests. Please try again later.");
+        }
         ItemRequest request = objectMapper.readValue(data, ItemRequest.class);
         Objects.requireNonNull(request, "Item request data must not be null");
         Set<ConstraintViolation<ItemRequest>> violations = validator.validate(request);

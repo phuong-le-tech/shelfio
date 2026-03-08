@@ -21,4 +21,6 @@ public interface ItemListRepository extends JpaRepository<ItemList, UUID> {
     Optional<ItemList> findByIdAndUserId(@NonNull UUID id, @NonNull UUID userId);
 
     boolean existsByIdAndUserId(@NonNull UUID id, @NonNull UUID userId);
+
+    long countByUserId(@NonNull UUID userId);
 }

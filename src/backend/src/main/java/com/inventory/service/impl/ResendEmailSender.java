@@ -13,6 +13,7 @@ import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.lang.NonNull;
 import org.springframework.stereotype.Service;
+import org.springframework.web.client.HttpClientErrorException;
 import org.springframework.web.client.RestClientException;
 import org.springframework.web.client.RestTemplate;
 
@@ -64,6 +65,9 @@ public class ResendEmailSender implements EmailSender {
         try {
             restTemplate.postForEntity(RESEND_API_URL, new HttpEntity<>(body, headers), String.class);
             log.info("Email sent to {} via Resend", obfuscateEmail(to));
+        } catch (HttpClientErrorException e) {
+            log.error("Resend API error sending to {}: {} - {}", obfuscateEmail(to), e.getStatusCode(), e.getResponseBodyAsString());
+            throw new RuntimeException("Failed to send email", e);
         } catch (RestClientException e) {
             log.error("Failed to send email to {} via Resend: {}", obfuscateEmail(to), e.getMessage());
             throw new RuntimeException("Failed to send email", e);

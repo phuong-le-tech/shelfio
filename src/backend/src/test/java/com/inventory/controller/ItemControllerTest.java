@@ -9,16 +9,20 @@ import com.inventory.enums.ItemStatus;
 import com.inventory.exception.ItemNotFoundException;
 import com.inventory.model.Item;
 import com.inventory.model.ItemList;
+import com.inventory.security.ApiRateLimiter;
+import com.inventory.security.CustomUserDetails;
 import com.inventory.service.IItemService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.context.annotation.Import;
+import org.springframework.http.MediaType;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.Pageable;
@@ -31,15 +35,17 @@ import java.util.Optional;
 import java.util.UUID;
 
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.doNothing;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.when;
+import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.user;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
 @SpringBootTest
-@AutoConfigureMockMvc(addFilters = false)
+@AutoConfigureMockMvc
 @Import(TestSecurityConfig.class)
 @ActiveProfiles("test")
 @DisplayName("ItemController Tests")
@@ -53,6 +59,10 @@ class ItemControllerTest {
 
     @MockitoBean
     private IItemService itemService;
+
+    @MockitoBean
+    @Qualifier("uploadRateLimiter")
+    private ApiRateLimiter uploadRateLimiter;
 
     private Item testItem;
     private ItemList testList;
@@ -75,6 +85,9 @@ class ItemControllerTest {
         testItem.setItemList(testList);
         testItem.setStatus(ItemStatus.IN_STOCK);
         testItem.setStock(10);
+
+        when(uploadRateLimiter.tryAcquire(anyString()))
+                .thenReturn(new ApiRateLimiter.RateLimitResult(true, 9));
     }
 
     @Nested
@@ -87,7 +100,8 @@ class ItemControllerTest {
             when(itemService.getAllItems(any(Pageable.class), any(ItemSearchCriteria.class)))
                     .thenReturn(new PageImpl<>(List.of(testItem)));
 
-            mockMvc.perform(get("/api/v1/items"))
+            mockMvc.perform(get("/api/v1/items")
+                            .with(user(new CustomUserDetails(UUID.randomUUID(), "test@test.com", "USER"))))
                     .andExpect(status().isOk())
                     .andExpect(jsonPath("$.data.content").isArray())
                     .andExpect(jsonPath("$.data.content[0].name").value("Test Item"))
@@ -104,7 +118,56 @@ class ItemControllerTest {
                             .param("page", "0")
                             .param("size", "10")
                             .param("sortBy", "name")
-                            .param("sortDir", "asc"))
+                            .param("sortDir", "asc")
+                            .with(user(new CustomUserDetails(UUID.randomUUID(), "test@test.com", "USER"))))
+                    .andExpect(status().isOk());
+        }
+
+        @Test
+        @DisplayName("should fall back to createdAt when sortBy is invalid")
+        void getAllItems_invalidSortBy_fallsBackToCreatedAt() throws Exception {
+            when(itemService.getAllItems(any(Pageable.class), any(ItemSearchCriteria.class)))
+                    .thenReturn(new PageImpl<>(List.of(testItem)));
+
+            mockMvc.perform(get("/api/v1/items")
+                            .param("sortBy", "INVALID_FIELD")
+                            .with(user(new CustomUserDetails(UUID.randomUUID(), "test@test.com", "USER"))))
+                    .andExpect(status().isOk());
+        }
+
+        @Test
+        @DisplayName("should clamp size to minimum 1 when size is 0")
+        void getAllItems_sizeTooSmall_clampsToOne() throws Exception {
+            when(itemService.getAllItems(any(Pageable.class), any(ItemSearchCriteria.class)))
+                    .thenReturn(new PageImpl<>(List.of()));
+
+            mockMvc.perform(get("/api/v1/items")
+                            .param("size", "0")
+                            .with(user(new CustomUserDetails(UUID.randomUUID(), "test@test.com", "USER"))))
+                    .andExpect(status().isOk());
+        }
+
+        @Test
+        @DisplayName("should clamp size to maximum 100 when size exceeds limit")
+        void getAllItems_sizeTooLarge_clampsToHundred() throws Exception {
+            when(itemService.getAllItems(any(Pageable.class), any(ItemSearchCriteria.class)))
+                    .thenReturn(new PageImpl<>(List.of()));
+
+            mockMvc.perform(get("/api/v1/items")
+                            .param("size", "500")
+                            .with(user(new CustomUserDetails(UUID.randomUUID(), "test@test.com", "USER"))))
+                    .andExpect(status().isOk());
+        }
+
+        @Test
+        @DisplayName("should sort descending by default")
+        void getAllItems_defaultSortDir_sortsDescending() throws Exception {
+            when(itemService.getAllItems(any(Pageable.class), any(ItemSearchCriteria.class)))
+                    .thenReturn(new PageImpl<>(List.of(testItem)));
+
+            mockMvc.perform(get("/api/v1/items")
+                            .param("sortDir", "desc")
+                            .with(user(new CustomUserDetails(UUID.randomUUID(), "test@test.com", "USER"))))
                     .andExpect(status().isOk());
         }
     }
@@ -118,7 +181,8 @@ class ItemControllerTest {
         void getItem_existingId_returnsItem() throws Exception {
             when(itemService.getItemById(testId)).thenReturn(Optional.of(testItem));
 
-            mockMvc.perform(get("/api/v1/items/{id}", testId))
+            mockMvc.perform(get("/api/v1/items/{id}", testId)
+                            .with(user(new CustomUserDetails(UUID.randomUUID(), "test@test.com", "USER"))))
                     .andExpect(status().isOk())
                     .andExpect(jsonPath("$.data.id").value(testId.toString()))
                     .andExpect(jsonPath("$.data.name").value("Test Item"))
@@ -132,7 +196,59 @@ class ItemControllerTest {
             when(itemService.getItemById(nonExistingId))
                     .thenReturn(Optional.empty());
 
-            mockMvc.perform(get("/api/v1/items/{id}", nonExistingId))
+            mockMvc.perform(get("/api/v1/items/{id}", nonExistingId)
+                            .with(user(new CustomUserDetails(UUID.randomUUID(), "test@test.com", "USER"))))
+                    .andExpect(status().isNotFound());
+        }
+    }
+
+    @Nested
+    @DisplayName("GET /api/v1/items/{id}/image")
+    class GetItemImageTests {
+
+        @Test
+        @DisplayName("should return image when item has image data")
+        void getItemImage_withImage_returnsImageBytes() throws Exception {
+            byte[] imageBytes = new byte[]{(byte) 0xFF, (byte) 0xD8, (byte) 0xFF, (byte) 0xE0};
+            testItem.setImageData(imageBytes);
+            testItem.setContentType("image/jpeg");
+            when(itemService.getItemById(testId)).thenReturn(Optional.of(testItem));
+
+            mockMvc.perform(get("/api/v1/items/{id}/image", testId)
+                            .with(user(new CustomUserDetails(UUID.randomUUID(), "test@test.com", "USER"))))
+                    .andExpect(status().isOk())
+                    .andExpect(content().contentType(MediaType.IMAGE_JPEG));
+        }
+
+        @Test
+        @DisplayName("should return 404 when item has no image data")
+        void getItemImage_noImage_returns404() throws Exception {
+            testItem.setImageData(null);
+            when(itemService.getItemById(testId)).thenReturn(Optional.of(testItem));
+
+            mockMvc.perform(get("/api/v1/items/{id}/image", testId)
+                            .with(user(new CustomUserDetails(UUID.randomUUID(), "test@test.com", "USER"))))
+                    .andExpect(status().isNotFound());
+        }
+
+        @Test
+        @DisplayName("should return 404 when item has empty image data")
+        void getItemImage_emptyImage_returns404() throws Exception {
+            testItem.setImageData(new byte[0]);
+            when(itemService.getItemById(testId)).thenReturn(Optional.of(testItem));
+
+            mockMvc.perform(get("/api/v1/items/{id}/image", testId)
+                            .with(user(new CustomUserDetails(UUID.randomUUID(), "test@test.com", "USER"))))
+                    .andExpect(status().isNotFound());
+        }
+
+        @Test
+        @DisplayName("should return 404 when item not found")
+        void getItemImage_notFound_returns404() throws Exception {
+            when(itemService.getItemById(testId)).thenReturn(Optional.empty());
+
+            mockMvc.perform(get("/api/v1/items/{id}/image", testId)
+                            .with(user(new CustomUserDetails(UUID.randomUUID(), "test@test.com", "USER"))))
                     .andExpect(status().isNotFound());
         }
     }
@@ -150,9 +266,37 @@ class ItemControllerTest {
             String jsonData = objectMapper.writeValueAsString(request);
 
             mockMvc.perform(multipart("/api/v1/items")
-                            .param("data", jsonData))
+                            .param("data", jsonData)
+                            .with(user(new CustomUserDetails(UUID.randomUUID(), "test@test.com", "USER"))))
                     .andExpect(status().isCreated())
                     .andExpect(jsonPath("$.data.name").value("Test Item"));
+        }
+
+        @Test
+        @DisplayName("should return 429 when rate limited on create")
+        void createItem_rateLimited_returns429() throws Exception {
+            when(uploadRateLimiter.tryAcquire(anyString()))
+                    .thenReturn(new ApiRateLimiter.RateLimitResult(false, 0));
+
+            ItemRequest request = new ItemRequest("New Item", testListId, ItemStatus.IN_STOCK, 5, null);
+            String jsonData = objectMapper.writeValueAsString(request);
+
+            mockMvc.perform(multipart("/api/v1/items")
+                            .param("data", jsonData)
+                            .with(user(new CustomUserDetails(UUID.randomUUID(), "test@test.com", "USER"))))
+                    .andExpect(status().isTooManyRequests());
+        }
+
+        @Test
+        @DisplayName("should return 400 when validation fails")
+        void createItem_invalidRequest_returns400() throws Exception {
+            // name is required, so empty string or null should fail validation
+            String invalidJson = "{\"itemListId\":\"" + testListId + "\"}";
+
+            mockMvc.perform(multipart("/api/v1/items")
+                            .param("data", invalidJson)
+                            .with(user(new CustomUserDetails(UUID.randomUUID(), "test@test.com", "USER"))))
+                    .andExpect(status().isBadRequest());
         }
 
         @Test
@@ -167,7 +311,8 @@ class ItemControllerTest {
 
             mockMvc.perform(multipart("/api/v1/items")
                             .file(imagePart)
-                            .param("data", jsonData))
+                            .param("data", jsonData)
+                            .with(user(new CustomUserDetails(UUID.randomUUID(), "test@test.com", "USER"))))
                     .andExpect(status().isCreated());
         }
     }
@@ -193,6 +338,7 @@ class ItemControllerTest {
 
             mockMvc.perform(multipart("/api/v1/items/{id}", testId)
                             .param("data", jsonData)
+                            .with(user(new CustomUserDetails(UUID.randomUUID(), "test@test.com", "USER")))
                             .with(req -> {
                                 req.setMethod("PATCH");
                                 return req;
@@ -200,6 +346,40 @@ class ItemControllerTest {
                     .andExpect(status().isOk())
                     .andExpect(jsonPath("$.data.name").value("Updated Item"))
                     .andExpect(jsonPath("$.data.status").value("LOW_STOCK"));
+        }
+
+        @Test
+        @DisplayName("should return 429 when rate limited on update")
+        void updateItem_rateLimited_returns429() throws Exception {
+            when(uploadRateLimiter.tryAcquire(anyString()))
+                    .thenReturn(new ApiRateLimiter.RateLimitResult(false, 0));
+
+            ItemRequest request = new ItemRequest("Updated Item", testListId, ItemStatus.LOW_STOCK, 20, null);
+            String jsonData = objectMapper.writeValueAsString(request);
+
+            mockMvc.perform(multipart("/api/v1/items/{id}", testId)
+                            .param("data", jsonData)
+                            .with(user(new CustomUserDetails(UUID.randomUUID(), "test@test.com", "USER")))
+                            .with(req -> {
+                                req.setMethod("PATCH");
+                                return req;
+                            }))
+                    .andExpect(status().isTooManyRequests());
+        }
+
+        @Test
+        @DisplayName("should return 400 when validation fails on update")
+        void updateItem_invalidRequest_returns400() throws Exception {
+            String invalidJson = "{\"itemListId\":\"" + testListId + "\"}";
+
+            mockMvc.perform(multipart("/api/v1/items/{id}", testId)
+                            .param("data", invalidJson)
+                            .with(user(new CustomUserDetails(UUID.randomUUID(), "test@test.com", "USER")))
+                            .with(req -> {
+                                req.setMethod("PATCH");
+                                return req;
+                            }))
+                    .andExpect(status().isBadRequest());
         }
     }
 
@@ -212,7 +392,8 @@ class ItemControllerTest {
         void deleteItem_existingId_returns204() throws Exception {
             doNothing().when(itemService).deleteItem(testId);
 
-            mockMvc.perform(delete("/api/v1/items/{id}", testId))
+            mockMvc.perform(delete("/api/v1/items/{id}", testId)
+                            .with(user(new CustomUserDetails(UUID.randomUUID(), "test@test.com", "USER"))))
                     .andExpect(status().isNoContent());
         }
 
@@ -222,7 +403,8 @@ class ItemControllerTest {
             UUID nonExistingId = UUID.randomUUID();
             doThrow(new ItemNotFoundException(nonExistingId)).when(itemService).deleteItem(nonExistingId);
 
-            mockMvc.perform(delete("/api/v1/items/{id}", nonExistingId))
+            mockMvc.perform(delete("/api/v1/items/{id}", nonExistingId)
+                            .with(user(new CustomUserDetails(UUID.randomUUID(), "test@test.com", "USER"))))
                     .andExpect(status().isNotFound());
         }
     }
@@ -242,7 +424,8 @@ class ItemControllerTest {
             );
             when(itemService.getDashboardStats()).thenReturn(stats);
 
-            mockMvc.perform(get("/api/v1/items/stats"))
+            mockMvc.perform(get("/api/v1/items/stats")
+                            .with(user(new CustomUserDetails(UUID.randomUUID(), "test@test.com", "USER"))))
                     .andExpect(status().isOk())
                     .andExpect(jsonPath("$.data.totalItems").value(10))
                     .andExpect(jsonPath("$.data.countByStatus.IN_STOCK").value(5))

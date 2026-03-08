@@ -50,8 +50,11 @@ public class ApiRateLimitFilter extends OncePerRequestFilter {
     @Override
     protected boolean shouldNotFilter(@NonNull HttpServletRequest request) {
         String path = request.getRequestURI();
-        // Exclude auth endpoints protected by LoginRateLimiter, but not /auth/me
+        // Exclude auth endpoints protected by LoginRateLimiter (but not /auth/me),
+        // Stripe webhook (Stripe retries and bursts should not be rate-limited),
+        // and actuator endpoints (on separate management port in prod)
         return (path.startsWith("/api/v1/auth/") && !path.equals("/api/v1/auth/me"))
+            || path.equals("/api/v1/stripe/webhook")
             || path.startsWith("/actuator/");
     }
 

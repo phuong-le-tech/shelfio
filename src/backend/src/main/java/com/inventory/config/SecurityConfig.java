@@ -24,8 +24,16 @@ import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 
+import jakarta.annotation.PostConstruct;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.core.env.Environment;
+import org.springframework.core.env.Profiles;
+
+import java.net.URI;
+import java.util.Arrays;
 import java.util.List;
 
+@Slf4j
 @Configuration
 @EnableWebSecurity
 @EnableMethodSecurity
@@ -34,9 +42,36 @@ public class SecurityConfig {
 
     private final JwtAuthenticationFilter jwtAuthFilter;
     private final UserDetailsService userDetailsService;
+    private final Environment environment;
 
     @Value("${app.cors.allowed-origins}")
     private String allowedOrigins;
+
+    @PostConstruct
+    void validateCorsOrigins() {
+        List<String> origins = List.of(allowedOrigins.split(","));
+        for (String origin : origins) {
+            String trimmed = origin.trim();
+            if ("*".equals(trimmed)) {
+                throw new IllegalStateException("Wildcard CORS origin '*' is not allowed");
+            }
+            try {
+                URI uri = URI.create(trimmed);
+                if (uri.getScheme() == null || uri.getHost() == null) {
+                    throw new IllegalStateException("Invalid CORS origin format: " + trimmed);
+                }
+            } catch (IllegalArgumentException e) {
+                throw new IllegalStateException("Malformed CORS origin: " + trimmed, e);
+            }
+        }
+        if (environment.acceptsProfiles(Profiles.of("prod"))) {
+            for (String origin : origins) {
+                if (origin.trim().startsWith("http://")) {
+                    log.warn("Non-HTTPS CORS origin in production: {}", origin.trim());
+                }
+            }
+        }
+    }
 
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
@@ -48,7 +83,7 @@ public class SecurityConfig {
             )
             .authorizeHttpRequests(auth -> auth
                 .requestMatchers("/api/v1/auth/**").permitAll()
-                .requestMatchers("/actuator/health").permitAll()
+                .requestMatchers("/api/v1/stripe/webhook").permitAll()
                 .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
                 .requestMatchers("/api/v1/admin/**").hasRole("ADMIN")
                 .requestMatchers("/api/**").authenticated()
@@ -56,6 +91,7 @@ public class SecurityConfig {
             )
             .headers(headers -> headers
                 .frameOptions(frame -> frame.deny())
+                .contentTypeOptions(cto -> {})
                 .httpStrictTransportSecurity(hsts -> hsts
                     .includeSubDomains(true)
                     .preload(true)
@@ -76,7 +112,7 @@ public class SecurityConfig {
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration config = new CorsConfiguration();
-        config.setAllowedOrigins(List.of(allowedOrigins.split(",")));
+        config.setAllowedOrigins(Arrays.stream(allowedOrigins.split(",")).map(String::trim).toList());
         config.setAllowedMethods(List.of("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"));
         config.setAllowedHeaders(List.of("Content-Type", "Authorization", "X-Requested-With"));
         config.setAllowCredentials(true);

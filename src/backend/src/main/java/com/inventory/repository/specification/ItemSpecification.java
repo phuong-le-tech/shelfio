@@ -7,26 +7,36 @@ import org.springframework.data.jpa.domain.Specification;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.UUID;
 
 import org.springframework.lang.NonNull;
+import org.springframework.lang.Nullable;
 
 import static org.springframework.util.StringUtils.hasText;
 
 public class ItemSpecification {
+
+    private static final String LIKE_ESCAPE_CHAR = "\\";
 
     private ItemSpecification() {
         // Utility class
     }
 
     @NonNull
-    public static Specification<Item> withCriteria(ItemSearchCriteria criteria) {
+    public static Specification<Item> withCriteria(ItemSearchCriteria criteria, @Nullable UUID userId) {
         return (root, query, cb) -> {
             List<Predicate> predicates = new ArrayList<>();
 
+            // User-scope filter: non-admin users only see their own items
+            if (userId != null) {
+                predicates.add(cb.equal(root.get("itemList").get("user").get("id"), userId));
+            }
+
             if (criteria != null) {
                 if (hasText(criteria.search())) {
-                    String pattern = "%" + criteria.search().toLowerCase() + "%";
-                    predicates.add(cb.like(cb.lower(root.get("name")), pattern));
+                    String escaped = escapeLikePattern(criteria.search().toLowerCase());
+                    String pattern = "%" + escaped + "%";
+                    predicates.add(cb.like(cb.lower(root.get("name")), pattern, LIKE_ESCAPE_CHAR.charAt(0)));
                 }
 
                 if (criteria.itemListId() != null) {
@@ -40,5 +50,12 @@ public class ItemSpecification {
 
             return cb.and(predicates.toArray(new Predicate[0]));
         };
+    }
+
+    private static String escapeLikePattern(String input) {
+        return input
+                .replace(LIKE_ESCAPE_CHAR, LIKE_ESCAPE_CHAR + LIKE_ESCAPE_CHAR)
+                .replace("%", LIKE_ESCAPE_CHAR + "%")
+                .replace("_", LIKE_ESCAPE_CHAR + "_");
     }
 }

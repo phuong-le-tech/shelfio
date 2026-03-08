@@ -7,8 +7,6 @@ import {
   Trash2,
   Package,
   List,
-  ChevronLeft,
-  ChevronRight,
   MoreHorizontal,
 } from "lucide-react";
 import axios from "axios";
@@ -27,6 +25,7 @@ import { SkeletonCard, SkeletonText } from "../components/Skeleton";
 import { useToast } from "../components/Toast";
 import ConfirmModal from "../components/ConfirmModal";
 import { Button } from "@/components/ui/button";
+import { Pagination } from "@/components/Pagination";
 import { Badge } from "@/components/ui/badge";
 import {
   DropdownMenu,
@@ -300,7 +299,7 @@ export default function ListDetail() {
                         {formatStatus(item.status)}
                       </Badge>
                     </div>
-                    <div className="absolute top-3 left-3 opacity-0 group-hover:opacity-100 transition-opacity">
+                    <div className="absolute top-3 left-3 opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity">
                       <DropdownMenu>
                         <DropdownMenuTrigger asChild>
                           <Button
@@ -334,7 +333,10 @@ export default function ListDetail() {
                     </div>
                   </div>
 
-                  <div className="p-4">
+                  <Link
+                    to={`/lists/${id}/items/${item.id}/edit`}
+                    className="block p-4 cursor-pointer"
+                  >
                     <h3 className="font-semibold tracking-tight mb-1">
                       {item.name}
                     </h3>
@@ -368,7 +370,7 @@ export default function ListDetail() {
                             })}
                         </div>
                       )}
-                  </div>
+                  </Link>
                 </div>
               </StaggeredItem>
             ))}
@@ -386,33 +388,7 @@ export default function ListDetail() {
             </div>
           )}
 
-          {itemTotalPages > 1 && (
-            <div className="flex items-center justify-center gap-4 mt-8">
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => setItemPage((p) => Math.max(0, p - 1))}
-                disabled={itemPage === 0}
-              >
-                <ChevronLeft className="h-4 w-4 mr-1" />
-                Précédent
-              </Button>
-              <span className="text-sm text-muted-foreground">
-                Page {itemPage + 1} sur {itemTotalPages}
-              </span>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() =>
-                  setItemPage((p) => Math.min(itemTotalPages - 1, p + 1))
-                }
-                disabled={itemPage >= itemTotalPages - 1}
-              >
-                Suivant
-                <ChevronRight className="h-4 w-4 ml-1" />
-              </Button>
-            </div>
-          )}
+          <Pagination page={itemPage} totalPages={itemTotalPages} onPageChange={setItemPage} />
         </>
       )}
 

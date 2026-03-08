@@ -7,6 +7,7 @@ import jakarta.validation.ConstraintViolationException;
 import com.inventory.exception.FileValidationException;
 import com.inventory.exception.ItemListNotFoundException;
 import com.inventory.exception.ItemNotFoundException;
+import com.inventory.exception.ListLimitExceededException;
 import com.inventory.exception.RateLimitExceededException;
 import com.inventory.exception.UnauthorizedException;
 import com.inventory.exception.UserAlreadyExistsException;
@@ -100,6 +101,11 @@ public class GlobalExceptionHandler {
 
     @ExceptionHandler(AccountNotVerifiedException.class)
     public ResponseEntity<ApiErrorResponse> handleAccountNotVerified(AccountNotVerifiedException e) {
+        return buildErrorResponse(HttpStatus.FORBIDDEN, e.getMessage());
+    }
+
+    @ExceptionHandler(ListLimitExceededException.class)
+    public ResponseEntity<ApiErrorResponse> handleListLimitExceeded(ListLimitExceededException e) {
         return buildErrorResponse(HttpStatus.FORBIDDEN, e.getMessage());
     }
 

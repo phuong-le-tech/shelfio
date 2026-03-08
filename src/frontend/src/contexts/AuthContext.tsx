@@ -1,5 +1,5 @@
-import { createContext, useContext, useState, useEffect, ReactNode } from 'react';
-import { User, LoginCredentials, SignupCredentials } from '../types/auth';
+import { createContext, useContext, useState, useEffect, useCallback, ReactNode } from 'react';
+import { User, LoginCredentials, SignupCredentials, isPremium as checkPremium } from '../types/auth';
 import { authApi } from '../services/authApi';
 
 interface AuthContextType {
@@ -10,7 +10,9 @@ interface AuthContextType {
   googleAuth: (credential: string) => Promise<void>;
   logout: () => Promise<void>;
   deleteAccount: () => Promise<void>;
+  refreshUser: () => Promise<void>;
   isAdmin: boolean;
+  isPremium: boolean;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -59,10 +61,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setUser(null);
   };
 
+  const refreshUser = useCallback(async () => {
+    try {
+      const currentUser = await authApi.getCurrentUser();
+      setUser(currentUser);
+    } catch {
+      // Keep existing user state — don't log out on transient errors
+    }
+  }, []);
+
   const isAdmin = user?.role === 'ADMIN';
+  const isPremium = user ? checkPremium(user.role) : false;
 
   return (
-    <AuthContext.Provider value={{ user, loading, login, signup, googleAuth, logout, deleteAccount, isAdmin }}>
+    <AuthContext.Provider value={{ user, loading, login, signup, googleAuth, logout, deleteAccount, refreshUser, isAdmin, isPremium }}>
       {children}
     </AuthContext.Provider>
   );

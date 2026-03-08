@@ -65,8 +65,8 @@ export default function Layout({ children }: LayoutProps) {
         <div className="p-6 border-b">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 bg-foreground rounded-xl flex items-center justify-center">
-                <Package className="h-5 w-5 text-background" />
+              <div className="w-10 h-10 bg-brand/10 rounded-xl flex items-center justify-center">
+                <Package className="h-5 w-5 text-brand" />
               </div>
               <span className="font-display text-xl font-semibold tracking-tight">Inventory</span>
             </div>

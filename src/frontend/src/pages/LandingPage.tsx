@@ -3,7 +3,6 @@ import { useAuth } from "../contexts/AuthContext";
 import {
   LandingNav,
   HeroSection,
-  DashboardPreviewSection,
   FeaturesSection,
   ListsPreviewSection,
   CTASection,
@@ -32,7 +31,6 @@ export default function LandingPage() {
     <div className="min-h-screen bg-background">
       <LandingNav />
       <HeroSection />
-      <DashboardPreviewSection />
       <FeaturesSection />
       <ListsPreviewSection />
       <CTASection />

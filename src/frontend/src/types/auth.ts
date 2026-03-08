@@ -1,4 +1,8 @@
-export type Role = 'USER' | 'ADMIN';
+export type Role = 'USER' | 'PREMIUM_USER' | 'ADMIN';
+
+export function isPremium(role: Role): boolean {
+  return role === 'PREMIUM_USER' || role === 'ADMIN';
+}
 
 export interface User {
   id: string;

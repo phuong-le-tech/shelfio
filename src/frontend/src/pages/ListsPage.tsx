@@ -1,17 +1,22 @@
 import { useEffect, useState, useCallback } from 'react';
 import { Link } from 'react-router-dom';
-import { Plus, Pencil, Trash2, ChevronLeft, ChevronRight, FolderOpen } from 'lucide-react';
+import { Plus, Pencil, Trash2, FolderOpen, Crown } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { listsApi } from '../services/api';
 import { ItemList, ItemListSearchParams } from '../types/item';
+import { useAuth } from '../contexts/AuthContext';
 import { SkeletonCard, SkeletonText, Skeleton } from '../components/Skeleton';
 import { useToast } from '../components/Toast';
 import ConfirmModal from '../components/ConfirmModal';
 import { Button } from '@/components/ui/button';
+import { Pagination } from '@/components/Pagination';
 import { Badge } from '@/components/ui/badge';
 import { BlurFade } from '@/components/effects/blur-fade';
 import { SpotlightCard } from '@/components/effects/spotlight-card';
 import { StaggeredList, StaggeredItem } from '@/components/effects/staggered-list';
+
+// Must match backend ItemListServiceImpl.MAX_FREE_LISTS
+const FREE_LIST_LIMIT = 5;
 
 export default function ListsPage() {
   const [lists, setLists] = useState<ItemList[]>([]);
@@ -22,6 +27,7 @@ export default function ListsPage() {
   const [totalPages, setTotalPages] = useState(0);
   const [totalElements, setTotalElements] = useState(0);
   const { showToast } = useToast();
+  const { isPremium } = useAuth();
 
   const loadLists = useCallback(async () => {
     setLoading(true);
@@ -94,23 +100,64 @@ export default function ListsPage() {
           </BlurFade>
         </div>
         <BlurFade delay={0.2}>
-          <Button asChild>
-            <Link to="/lists/new">
-              <Plus className="h-4 w-4 mr-2" />
-              Nouvelle liste
-            </Link>
-          </Button>
+          {!isPremium && totalElements >= FREE_LIST_LIMIT ? (
+            <Button asChild>
+              <Link to="/upgrade">
+                <Crown className="h-4 w-4 mr-2" />
+                Passer en Premium
+              </Link>
+            </Button>
+          ) : (
+            <Button asChild>
+              <Link to="/lists/new">
+                <Plus className="h-4 w-4 mr-2" />
+                Nouvelle liste
+              </Link>
+            </Button>
+          )}
         </BlurFade>
       </div>
 
+      {/* Upgrade banners for free users */}
+      {!isPremium && totalElements === FREE_LIST_LIMIT - 1 && (
+        <BlurFade delay={0.3}>
+          <div className="rounded-xl border border-brand/30 bg-brand-light/50 p-4 mb-2 flex items-center justify-between">
+            <p className="text-sm text-foreground">
+              <span className="font-medium">1 liste restante</span> sur votre plan gratuit
+            </p>
+            <Button variant="outline" size="sm" asChild>
+              <Link to="/upgrade">Voir les offres</Link>
+            </Button>
+          </div>
+        </BlurFade>
+      )}
+      {!isPremium && totalElements >= FREE_LIST_LIMIT && (
+        <BlurFade delay={0.3}>
+          <div className="rounded-xl border-2 border-brand bg-brand-light/50 p-4 mb-2 flex items-center justify-between">
+            <div>
+              <p className="text-sm font-medium text-foreground">Limite atteinte</p>
+              <p className="text-sm text-muted-foreground">
+                Passez en Premium pour des listes illimitees — 2€ (paiement unique)
+              </p>
+            </div>
+            <Button size="sm" asChild>
+              <Link to="/upgrade">
+                <Crown className="h-3.5 w-3.5 mr-1.5" />
+                Passer en Premium
+              </Link>
+            </Button>
+          </div>
+        </BlurFade>
+      )}
+
       <StaggeredList className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         <AnimatePresence>
-          {lists.map((list, index) => (
-            <StaggeredItem key={list.id} className={index % 4 === 3 ? 'lg:col-span-2' : ''}>
+          {lists.map((list) => (
+            <StaggeredItem key={list.id}>
               <SpotlightCard className="group rounded-2xl border bg-card shadow-card transition-all duration-300 hover:shadow-elevated overflow-hidden">
                 <Link to={`/lists/${list.id}`} className="block p-6">
                   <div className="flex items-start justify-between mb-4">
-                    <div className="w-12 h-12 rounded-xl bg-peach-light flex items-center justify-center">
+                    <div className="w-12 h-12 rounded-xl bg-brand-light flex items-center justify-center">
                       <span className="font-display text-xl font-bold text-foreground">
                         {list.name[0]?.toUpperCase()}
                       </span>
@@ -119,7 +166,7 @@ export default function ListsPage() {
                       <Badge variant="secondary">{list.category}</Badge>
                     )}
                   </div>
-                  <h3 className="font-display text-lg font-semibold tracking-tight mb-1 group-hover:text-peach-dark transition-colors">
+                  <h3 className="font-display text-lg font-semibold tracking-tight mb-1 group-hover:text-brand-dark transition-colors">
                     {list.name}
                   </h3>
                   {list.description && (
@@ -176,31 +223,7 @@ export default function ListsPage() {
         </div>
       )}
 
-      {totalPages > 1 && (
-        <div className="flex items-center justify-center gap-4 mt-8">
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => setPage(p => Math.max(0, p - 1))}
-            disabled={page === 0}
-          >
-            <ChevronLeft className="h-4 w-4 mr-1" />
-            Precedent
-          </Button>
-          <span className="text-sm text-muted-foreground">
-            Page {page + 1} sur {totalPages}
-          </span>
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => setPage(p => Math.min(totalPages - 1, p + 1))}
-            disabled={page >= totalPages - 1}
-          >
-            Suivant
-            <ChevronRight className="h-4 w-4 ml-1" />
-          </Button>
-        </div>
-      )}
+      <Pagination page={page} totalPages={totalPages} onPageChange={setPage} />
 
       <ConfirmModal
         isOpen={pendingDeleteId !== null}

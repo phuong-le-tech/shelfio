@@ -8,25 +8,35 @@ import com.inventory.dto.request.ResetPasswordRequest;
 import com.inventory.dto.request.SignupRequest;
 import com.inventory.dto.response.AuthResponse;
 import com.inventory.dto.response.UserResponse;
+import com.inventory.exception.RateLimitExceededException;
+import com.inventory.security.ApiRateLimiter;
 import com.inventory.security.CustomUserDetails;
 import com.inventory.security.LoginRateLimiter;
 import com.inventory.service.IAuthService;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import jakarta.validation.Valid;
-import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
 @RequestMapping("/api/v1/auth")
-@RequiredArgsConstructor
 public class AuthController {
 
     private final IAuthService authService;
     private final LoginRateLimiter loginRateLimiter;
+    private final ApiRateLimiter tokenRateLimiter;
+
+    public AuthController(IAuthService authService, LoginRateLimiter loginRateLimiter,
+                           @Qualifier("tokenRateLimiter") ApiRateLimiter tokenRateLimiter) {
+        this.authService = authService;
+        this.loginRateLimiter = loginRateLimiter;
+        this.tokenRateLimiter = tokenRateLimiter;
+    }
 
     @PostMapping("/login")
     public ResponseEntity<AuthResponse> login(
@@ -34,8 +44,15 @@ public class AuthController {
             HttpServletRequest httpRequest,
             HttpServletResponse response
     ) {
-        loginRateLimiter.checkRateLimit(httpRequest);
-        return ResponseEntity.ok(authService.login(request, response));
+        loginRateLimiter.checkRateLimit(httpRequest, request.email());
+        try {
+            AuthResponse authResponse = authService.login(request, response);
+            loginRateLimiter.recordSuccessfulLogin(request.email());
+            return ResponseEntity.ok(authResponse);
+        } catch (BadCredentialsException e) {
+            loginRateLimiter.recordFailedLogin(request.email());
+            throw e;
+        }
     }
 
     @PostMapping("/signup")
@@ -44,7 +61,7 @@ public class AuthController {
             HttpServletRequest httpRequest,
             HttpServletResponse response
     ) {
-        loginRateLimiter.checkRateLimit(httpRequest);
+        loginRateLimiter.checkRateLimit(httpRequest, request.email());
         return ResponseEntity.status(HttpStatus.CREATED)
                 .body(authService.signup(request, response));
     }
@@ -65,6 +82,7 @@ public class AuthController {
             HttpServletRequest httpRequest
     ) {
         loginRateLimiter.checkRateLimit(httpRequest);
+        checkTokenRateLimit(token);
         authService.verifyEmail(token);
         return ResponseEntity.ok().build();
     }
@@ -84,7 +102,7 @@ public class AuthController {
             @Valid @RequestBody ForgotPasswordRequest request,
             HttpServletRequest httpRequest
     ) {
-        loginRateLimiter.checkRateLimit(httpRequest);
+        loginRateLimiter.checkRateLimit(httpRequest, request.email());
         authService.forgotPassword(request.email());
         return ResponseEntity.ok().build();
     }
@@ -95,8 +113,16 @@ public class AuthController {
             HttpServletRequest httpRequest
     ) {
         loginRateLimiter.checkRateLimit(httpRequest);
+        checkTokenRateLimit(request.token());
         authService.resetPassword(request.token(), request.password());
         return ResponseEntity.ok().build();
+    }
+
+    private void checkTokenRateLimit(String token) {
+        String prefix = token.length() > 8 ? token.substring(0, 8) : token;
+        if (!tokenRateLimiter.tryAcquire("token:" + prefix).allowed()) {
+            throw new RateLimitExceededException("Too many attempts. Please try again later.");
+        }
     }
 
     @PostMapping("/logout")

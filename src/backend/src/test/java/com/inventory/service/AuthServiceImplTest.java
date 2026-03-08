@@ -9,11 +9,13 @@ import com.inventory.dto.request.LoginRequest;
 import com.inventory.dto.request.SignupRequest;
 import com.inventory.dto.response.AuthResponse;
 import com.inventory.enums.Role;
+import com.inventory.enums.TokenType;
 import com.inventory.exception.AccountNotVerifiedException;
 import com.inventory.exception.UnauthorizedException;
 import com.inventory.exception.UserAlreadyExistsException;
 import com.inventory.exception.UserNotFoundException;
 import com.inventory.model.User;
+import com.inventory.model.VerificationToken;
 import com.inventory.repository.UserRepository;
 import com.inventory.repository.VerificationTokenRepository;
 import com.inventory.security.CookieService;
@@ -41,8 +43,10 @@ import org.springframework.security.core.Authentication;
 import org.springframework.web.client.RestClientException;
 import org.springframework.web.client.RestTemplate;
 
+import java.time.LocalDateTime;
 import java.util.Optional;
 import java.util.UUID;
+import java.util.concurrent.Executor;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -80,6 +84,9 @@ class AuthServiceImplTest {
 
     @Mock
     private PasswordEncoder passwordEncoder;
+
+    @Mock
+    private Executor emailExecutor;
 
     @Mock
     private HttpServletResponse httpResponse;
@@ -352,6 +359,278 @@ class AuthServiceImplTest {
             assertThatThrownBy(() -> authService.googleAuth(new GoogleAuthRequest("valid-token"), httpResponse))
                 .isInstanceOf(UnauthorizedException.class)
                 .hasMessageContaining("Invalid Google user info response");
+        }
+    }
+
+    @Nested
+    @DisplayName("verifyEmail")
+    class VerifyEmailTests {
+
+        @Test
+        @DisplayName("should enable user when token is valid and not expired")
+        void verifyEmail_success() {
+            VerificationToken token = new VerificationToken();
+            token.setToken("valid-token");
+            token.setUser(testUser);
+            token.setType(TokenType.EMAIL_VERIFICATION);
+            token.setExpiresAt(LocalDateTime.now().plusHours(1));
+            testUser.setEnabled(false);
+
+            when(verificationTokenRepository.findByTokenAndType("valid-token", TokenType.EMAIL_VERIFICATION))
+                .thenReturn(Optional.of(token));
+            when(userRepository.save(any(User.class))).thenAnswer(inv -> inv.getArgument(0));
+
+            authService.verifyEmail("valid-token");
+
+            verify(verificationTokenRepository).delete(token);
+            ArgumentCaptor<User> captor = ArgumentCaptor.forClass(User.class);
+            verify(userRepository).save(captor.capture());
+            assertThat(captor.getValue().isEnabled()).isTrue();
+        }
+
+        @Test
+        @DisplayName("should throw UnauthorizedException for expired token and delete it")
+        void verifyEmail_expiredToken() {
+            VerificationToken token = new VerificationToken();
+            token.setToken("expired-token");
+            token.setUser(testUser);
+            token.setType(TokenType.EMAIL_VERIFICATION);
+            token.setExpiresAt(LocalDateTime.now().minusHours(1));
+
+            when(verificationTokenRepository.findByTokenAndType("expired-token", TokenType.EMAIL_VERIFICATION))
+                .thenReturn(Optional.of(token));
+
+            assertThatThrownBy(() -> authService.verifyEmail("expired-token"))
+                .isInstanceOf(UnauthorizedException.class)
+                .hasMessageContaining("expired");
+
+            verify(verificationTokenRepository).delete(token);
+            verify(userRepository, never()).save(any());
+        }
+
+        @Test
+        @DisplayName("should throw UnauthorizedException for invalid token")
+        void verifyEmail_invalidToken() {
+            when(verificationTokenRepository.findByTokenAndType("bad-token", TokenType.EMAIL_VERIFICATION))
+                .thenReturn(Optional.empty());
+
+            assertThatThrownBy(() -> authService.verifyEmail("bad-token"))
+                .isInstanceOf(UnauthorizedException.class);
+        }
+    }
+
+    @Nested
+    @DisplayName("resetPassword")
+    class ResetPasswordTests {
+
+        @Test
+        @DisplayName("should reset password when token is valid")
+        void resetPassword_success() {
+            VerificationToken token = new VerificationToken();
+            token.setToken("reset-token");
+            token.setUser(testUser);
+            token.setType(TokenType.PASSWORD_RESET);
+            token.setExpiresAt(LocalDateTime.now().plusMinutes(10));
+
+            when(verificationTokenRepository.findByTokenAndType("reset-token", TokenType.PASSWORD_RESET))
+                .thenReturn(Optional.of(token));
+            when(passwordEncoder.encode("newPassword123")).thenReturn("encoded-new-password");
+            when(userRepository.save(any(User.class))).thenAnswer(inv -> inv.getArgument(0));
+
+            authService.resetPassword("reset-token", "newPassword123");
+
+            verify(verificationTokenRepository).delete(token);
+            ArgumentCaptor<User> captor = ArgumentCaptor.forClass(User.class);
+            verify(userRepository).save(captor.capture());
+            assertThat(captor.getValue().getPassword()).isEqualTo("encoded-new-password");
+        }
+
+        @Test
+        @DisplayName("should throw UnauthorizedException for expired reset token and delete it")
+        void resetPassword_expiredToken() {
+            VerificationToken token = new VerificationToken();
+            token.setToken("expired-reset");
+            token.setUser(testUser);
+            token.setType(TokenType.PASSWORD_RESET);
+            token.setExpiresAt(LocalDateTime.now().minusMinutes(1));
+
+            when(verificationTokenRepository.findByTokenAndType("expired-reset", TokenType.PASSWORD_RESET))
+                .thenReturn(Optional.of(token));
+
+            assertThatThrownBy(() -> authService.resetPassword("expired-reset", "newPassword123"))
+                .isInstanceOf(UnauthorizedException.class)
+                .hasMessageContaining("expired");
+
+            verify(verificationTokenRepository).delete(token);
+            verify(userRepository, never()).save(any());
+        }
+
+        @Test
+        @DisplayName("should throw UnauthorizedException for invalid reset token")
+        void resetPassword_invalidToken() {
+            when(verificationTokenRepository.findByTokenAndType("bad-token", TokenType.PASSWORD_RESET))
+                .thenReturn(Optional.empty());
+
+            assertThatThrownBy(() -> authService.resetPassword("bad-token", "newPassword123"))
+                .isInstanceOf(UnauthorizedException.class);
+        }
+    }
+
+    @Nested
+    @DisplayName("resendVerification")
+    class ResendVerificationTests {
+
+        @Test
+        @DisplayName("should send verification email for unverified user")
+        void resendVerification_unverifiedUser() {
+            testUser.setEnabled(false);
+            when(userRepository.findByEmail("test@example.com")).thenReturn(Optional.of(testUser));
+            doAnswer(inv -> { ((Runnable) inv.getArgument(0)).run(); return null; })
+                .when(emailExecutor).execute(any(Runnable.class));
+            when(verificationTokenRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
+
+            authService.resendVerification("test@example.com");
+
+            verify(emailSender).send(eq("test@example.com"), anyString(), anyString());
+        }
+
+        @Test
+        @DisplayName("should not send email for already verified user")
+        void resendVerification_alreadyVerified() {
+            testUser.setEnabled(true);
+            when(userRepository.findByEmail("test@example.com")).thenReturn(Optional.of(testUser));
+
+            authService.resendVerification("test@example.com");
+
+            verify(emailSender, never()).send(anyString(), anyString(), anyString());
+        }
+
+        @Test
+        @DisplayName("should not send email for nonexistent user")
+        void resendVerification_nonexistentUser() {
+            when(userRepository.findByEmail("nonexistent@example.com")).thenReturn(Optional.empty());
+
+            authService.resendVerification("nonexistent@example.com");
+
+            verify(emailSender, never()).send(anyString(), anyString(), anyString());
+        }
+    }
+
+    @Nested
+    @DisplayName("forgotPassword")
+    class ForgotPasswordTests {
+
+        @Test
+        @DisplayName("should send password reset email for enabled user")
+        void forgotPassword_enabledUser() {
+            testUser.setEnabled(true);
+            when(userRepository.findByEmail("test@example.com")).thenReturn(Optional.of(testUser));
+            doAnswer(inv -> { ((Runnable) inv.getArgument(0)).run(); return null; })
+                .when(emailExecutor).execute(any(Runnable.class));
+            when(verificationTokenRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
+
+            authService.forgotPassword("test@example.com");
+
+            verify(emailSender).send(eq("test@example.com"), anyString(), anyString());
+        }
+
+        @Test
+        @DisplayName("should not send email for disabled user")
+        void forgotPassword_disabledUser() {
+            testUser.setEnabled(false);
+            when(userRepository.findByEmail("test@example.com")).thenReturn(Optional.of(testUser));
+
+            authService.forgotPassword("test@example.com");
+
+            verify(emailSender, never()).send(anyString(), anyString(), anyString());
+        }
+
+        @Test
+        @DisplayName("should not send email for nonexistent user")
+        void forgotPassword_nonexistentUser() {
+            when(userRepository.findByEmail("unknown@example.com")).thenReturn(Optional.empty());
+
+            authService.forgotPassword("unknown@example.com");
+
+            verify(emailSender, never()).send(anyString(), anyString(), anyString());
+        }
+    }
+
+    @Nested
+    @DisplayName("deleteAccount")
+    class DeleteAccountTests {
+
+        @Test
+        @DisplayName("should delete user and clear cookie")
+        void deleteAccount_success() {
+            UUID userId = testUser.getId();
+
+            authService.deleteAccount(userId, httpResponse);
+
+            verify(userService).deleteUser(userId);
+            verify(cookieService).clearAccessTokenCookie(httpResponse);
+        }
+    }
+
+    @Nested
+    @DisplayName("sanitizePictureUrl")
+    class SanitizePictureUrlTests {
+
+        private String invokeSanitize(String url) {
+            return (String) org.springframework.test.util.ReflectionTestUtils
+                .invokeMethod(authService, "sanitizePictureUrl", url);
+        }
+
+        @Test
+        @DisplayName("should accept valid Google profile URL")
+        void acceptsGoogleUrl() {
+            assertThat(invokeSanitize("https://lh3.googleusercontent.com/photo.jpg"))
+                .isEqualTo("https://lh3.googleusercontent.com/photo.jpg");
+        }
+
+        @Test
+        @DisplayName("should accept googleapis.com URL")
+        void acceptsGoogleApisUrl() {
+            assertThat(invokeSanitize("https://storage.googleapis.com/avatar.png"))
+                .isEqualTo("https://storage.googleapis.com/avatar.png");
+        }
+
+        @Test
+        @DisplayName("should reject non-HTTPS URL")
+        void rejectsNonHttps() {
+            assertThat(invokeSanitize("http://lh3.googleusercontent.com/photo.jpg")).isNull();
+        }
+
+        @Test
+        @DisplayName("should reject URL with embedded credentials")
+        void rejectsEmbeddedCredentials() {
+            assertThat(invokeSanitize("https://user:pass@lh3.googleusercontent.com/photo.jpg")).isNull();
+        }
+
+        @Test
+        @DisplayName("should reject IPv4 address host")
+        void rejectsIpv4() {
+            assertThat(invokeSanitize("https://192.168.1.1/photo.jpg")).isNull();
+        }
+
+        @Test
+        @DisplayName("should reject non-Google domain")
+        void rejectsNonGoogleDomain() {
+            assertThat(invokeSanitize("https://evil.com/photo.jpg")).isNull();
+        }
+
+        @Test
+        @DisplayName("should return null for null or blank URL")
+        void handlesNullAndBlank() {
+            assertThat(invokeSanitize(null)).isNull();
+            assertThat(invokeSanitize("")).isNull();
+            assertThat(invokeSanitize("   ")).isNull();
+        }
+
+        @Test
+        @DisplayName("should return null for invalid URI")
+        void handlesInvalidUri() {
+            assertThat(invokeSanitize("not a valid uri %%%")).isNull();
         }
     }
 }

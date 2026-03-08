@@ -45,10 +45,10 @@ export default {
           DEFAULT: 'hsl(var(--card))',
           foreground: 'hsl(var(--card-foreground))',
         },
-        peach: {
-          DEFAULT: 'hsl(var(--peach))',
-          light: 'hsl(var(--peach-light))',
-          dark: 'hsl(var(--peach-dark))',
+        brand: {
+          DEFAULT: 'hsl(var(--brand))',
+          light: 'hsl(var(--brand-light))',
+          dark: 'hsl(var(--brand-dark))',
         },
         status: {
           prepare: {

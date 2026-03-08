@@ -40,6 +40,12 @@ public class User {
     @Column(name = "picture_url")
     private String pictureUrl;
 
+    @Column(name = "stripe_customer_id")
+    private String stripeCustomerId;
+
+    @Column(name = "stripe_payment_id")
+    private String stripePaymentId;
+
     @Column(nullable = false)
     private boolean enabled = true;
 

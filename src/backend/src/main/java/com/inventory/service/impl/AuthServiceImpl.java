@@ -26,6 +26,8 @@ import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.lang.NonNull;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import java.security.SecureRandom;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.Executor;
 import java.time.LocalDateTime;
 import java.util.Base64;
 import java.util.UUID;
@@ -59,13 +61,14 @@ public class AuthServiceImpl implements IAuthService {
     private final VerificationTokenRepository verificationTokenRepository;
     private final EmailSender emailSender;
     private final PasswordEncoder passwordEncoder;
+    private final Executor emailExecutor;
 
     @Value("${app.frontend-url}")
     private String frontendUrl;
 
     private static final String GOOGLE_USERINFO_URL = "https://www.googleapis.com/oauth2/v3/userinfo";
     private static final int VERIFICATION_TOKEN_EXPIRY_HOURS = 24;
-    private static final int PASSWORD_RESET_TOKEN_EXPIRY_HOURS = 1;
+    private static final int PASSWORD_RESET_TOKEN_EXPIRY_MINUTES = 15;
     private static final SecureRandom SECURE_RANDOM = new SecureRandom();
 
     @Override
@@ -151,18 +154,22 @@ public class AuthServiceImpl implements IAuthService {
 
     @Override
     public void resendVerification(@NonNull String email) {
+        long start = System.nanoTime();
         userRepository.findByEmail(email)
             .filter(user -> !user.isEnabled())
-            .ifPresent(this::sendVerificationEmail);
-        // Always return success to prevent email enumeration
+            .ifPresent(user -> CompletableFuture.runAsync(() -> sendVerificationEmail(user), emailExecutor));
+        // Constant-time response to prevent timing-based email enumeration
+        enforceMinimumLatency(start, 200);
     }
 
     @Override
     public void forgotPassword(@NonNull String email) {
+        long start = System.nanoTime();
         userRepository.findByEmail(email)
             .filter(User::isEnabled)
-            .ifPresent(this::sendPasswordResetEmail);
-        // Always return success to prevent email enumeration
+            .ifPresent(user -> CompletableFuture.runAsync(() -> sendPasswordResetEmail(user), emailExecutor));
+        // Constant-time response to prevent timing-based email enumeration
+        enforceMinimumLatency(start, 200);
     }
 
     @Override
@@ -239,7 +246,7 @@ public class AuthServiceImpl implements IAuthService {
         token.setToken(generateSecureToken());
         token.setUser(user);
         token.setType(TokenType.PASSWORD_RESET);
-        token.setExpiresAt(LocalDateTime.now().plusHours(PASSWORD_RESET_TOKEN_EXPIRY_HOURS));
+        token.setExpiresAt(LocalDateTime.now().plusMinutes(PASSWORD_RESET_TOKEN_EXPIRY_MINUTES));
         verificationTokenRepository.save(token);
 
         String resetUrl = frontendUrl + "/reset-password?token=" + token.getToken();
@@ -250,11 +257,11 @@ public class AuthServiceImpl implements IAuthService {
                 <h2>Reinitialiser votre mot de passe</h2>
                 <p>Vous avez demande la reinitialisation de votre mot de passe. Cliquez sur le lien ci-dessous :</p>
                 <p><a href="%s" style="display: inline-block; padding: 12px 24px; background-color: #171717; color: #ffffff; text-decoration: none; border-radius: 8px;">Reinitialiser mon mot de passe</a></p>
-                <p style="color: #666; font-size: 14px;">Ce lien expire dans %d heure(s).</p>
+                <p style="color: #666; font-size: 14px;">Ce lien expire dans %d minutes.</p>
                 <p style="color: #666; font-size: 14px;">Si vous n'avez pas fait cette demande, vous pouvez ignorer cet email.</p>
             </div>
             </body></html>
-            """.formatted(resetUrl, PASSWORD_RESET_TOKEN_EXPIRY_HOURS);
+            """.formatted(resetUrl, PASSWORD_RESET_TOKEN_EXPIRY_MINUTES);
 
         emailSender.send(user.getEmail(), "Reinitialisation du mot de passe - Inventory", html);
     }
@@ -302,8 +309,27 @@ public class AuthServiceImpl implements IAuthService {
         if (url == null || url.isBlank()) return null;
         try {
             java.net.URI uri = java.net.URI.create(url);
+            // Reject non-HTTPS schemes
+            if (!"https".equalsIgnoreCase(uri.getScheme())) {
+                log.warn("Rejected non-HTTPS picture URL scheme: {}", uri.getScheme());
+                return null;
+            }
+            // Reject URLs with embedded credentials (user@host)
+            if (uri.getUserInfo() != null) {
+                log.warn("Rejected picture URL with embedded credentials");
+                return null;
+            }
             String host = uri.getHost();
-            if (host != null && (host.endsWith(".googleusercontent.com") || host.endsWith(".googleapis.com"))) {
+            if (host == null) {
+                log.warn("Rejected picture URL with no host");
+                return null;
+            }
+            // Reject IP addresses (IPv4 and IPv6)
+            if (host.matches("\\d{1,3}(\\.\\d{1,3}){3}") || host.contains(":")) {
+                log.warn("Rejected picture URL with IP address host");
+                return null;
+            }
+            if (host.endsWith(".googleusercontent.com") || host.endsWith(".googleapis.com")) {
                 return url;
             }
         } catch (IllegalArgumentException e) {
@@ -311,6 +337,19 @@ public class AuthServiceImpl implements IAuthService {
         }
         log.warn("Rejected non-Google picture URL: {}", url.substring(0, Math.min(url.length(), 50)));
         return null;
+    }
+
+    private void enforceMinimumLatency(long startNanos, long minimumMs) {
+        long elapsedMs = (System.nanoTime() - startNanos) / 1_000_000;
+        long jitter = SECURE_RANDOM.nextInt(50);
+        long targetMs = minimumMs + jitter;
+        if (elapsedMs < targetMs) {
+            try {
+                Thread.sleep(targetMs - elapsedMs);
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+            }
+        }
     }
 
     private User findOrCreateGoogleUser(String googleId, String email, String pictureUrl) {

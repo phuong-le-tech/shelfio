@@ -452,7 +452,7 @@ export default function ItemForm() {
               <label className="block cursor-pointer">
                 <div
                   className={cn(
-                    "flex flex-col items-center justify-center rounded-2xl border-2 border-dashed transition-all duration-200 hover:border-peach-dark hover:bg-peach-light/30 group min-h-[280px] overflow-hidden",
+                    "flex flex-col items-center justify-center rounded-2xl border-2 border-dashed transition-all duration-200 hover:border-brand-dark hover:bg-brand-light/30 group min-h-[280px] overflow-hidden",
                     imagePreview
                       ? "border-transparent p-0"
                       : "border-border p-8",
@@ -473,7 +473,7 @@ export default function ItemForm() {
                     </div>
                   ) : (
                     <>
-                      <Upload className="h-10 w-10 text-muted-foreground/50 mb-3 group-hover:text-peach-dark group-hover:scale-110 transition-all duration-200" />
+                      <Upload className="h-10 w-10 text-muted-foreground/50 mb-3 group-hover:text-brand-dark group-hover:scale-110 transition-all duration-200" />
                       <span className="text-sm font-medium text-muted-foreground group-hover:text-foreground transition-colors">
                         Télécharger une image
                       </span>
