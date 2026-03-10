@@ -27,11 +27,9 @@ public class StripeConfig {
     @PostConstruct
     public void init() {
         if (environment.acceptsProfiles(Profiles.of("prod"))) {
-            if (secretKey == null || secretKey.isBlank()) {
-                throw new IllegalStateException("STRIPE_SECRET_KEY must be set in production");
-            }
-            if (webhookSecret == null || webhookSecret.isBlank()) {
-                throw new IllegalStateException("STRIPE_WEBHOOK_SECRET must be set in production");
+            if (secretKey == null || secretKey.isBlank() || webhookSecret == null || webhookSecret.isBlank()) {
+                log.warn("Stripe not configured in production (STRIPE_SECRET_KEY or STRIPE_WEBHOOK_SECRET missing) — payment features disabled");
+                return;
             }
             Stripe.apiKey = secretKey;
             log.info("Stripe API configured for production");

@@ -6,6 +6,7 @@ import com.inventory.model.User;
 import com.inventory.repository.StripeWebhookEventRepository;
 import com.inventory.repository.UserRepository;
 import com.inventory.service.impl.StripeServiceImpl;
+import com.stripe.Stripe;
 import com.stripe.exception.SignatureVerificationException;
 import com.stripe.exception.StripeException;
 import com.stripe.model.Charge;
@@ -18,6 +19,7 @@ import com.stripe.model.checkout.Session;
 import com.stripe.net.Webhook;
 import com.stripe.param.CustomerCreateParams;
 import com.stripe.param.checkout.SessionCreateParams;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
@@ -72,7 +74,13 @@ class StripeServiceImplTest {
         testUser.setRole(Role.USER);
     }
 
+    @AfterEach
+    void tearDown() {
+        Stripe.apiKey = null;
+    }
+
     private void setDefaultFields() {
+        Stripe.apiKey = "sk_test_dummy";
         ReflectionTestUtils.setField(stripeService, "webhookSecret", WEBHOOK_SECRET);
         ReflectionTestUtils.setField(stripeService, "priceAmount", PRICE_AMOUNT);
         ReflectionTestUtils.setField(stripeService, "priceCurrency", PRICE_CURRENCY);
@@ -1018,6 +1026,17 @@ class StripeServiceImplTest {
                 .isInstanceOf(RuntimeException.class)
                 .hasMessage("User not found");
         }
+
+        @Test
+        @DisplayName("39. throws IllegalStateException when Stripe API key is not configured")
+        void throwsWhenStripeNotConfigured() {
+            Stripe.apiKey = null;
+            ReflectionTestUtils.setField(stripeService, "frontendUrl", FRONTEND_URL);
+
+            assertThatThrownBy(() -> stripeService.createCheckoutSession(testUser))
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessage("Payment features are not available");
+        }
     }
 
     // -----------------------------------------------------------------------
@@ -1029,7 +1048,7 @@ class StripeServiceImplTest {
     class DeserializeEventObjectTests {
 
         @Test
-        @DisplayName("39. throws RuntimeException on API version mismatch")
+        @DisplayName("40. throws RuntimeException on API version mismatch")
         void throwsOnApiVersionMismatch() {
             Event event = mock(Event.class);
             lenient().when(event.getId()).thenReturn("evt_mismatch");
@@ -1062,7 +1081,7 @@ class StripeServiceImplTest {
     class ValidatePriceConfigTests {
 
         @Test
-        @DisplayName("40. throws IllegalStateException when priceAmount is null")
+        @DisplayName("41. throws IllegalStateException when priceAmount is null")
         void throwsWhenPriceAmountNull() {
             ReflectionTestUtils.setField(stripeService, "priceAmount", null);
 
@@ -1072,7 +1091,7 @@ class StripeServiceImplTest {
         }
 
         @Test
-        @DisplayName("41. throws IllegalStateException when priceAmount is zero")
+        @DisplayName("42. throws IllegalStateException when priceAmount is zero")
         void throwsWhenPriceAmountZero() {
             ReflectionTestUtils.setField(stripeService, "priceAmount", 0L);
 
@@ -1082,7 +1101,7 @@ class StripeServiceImplTest {
         }
 
         @Test
-        @DisplayName("42. throws IllegalStateException when priceAmount is negative")
+        @DisplayName("43. throws IllegalStateException when priceAmount is negative")
         void throwsWhenPriceAmountNegative() {
             ReflectionTestUtils.setField(stripeService, "priceAmount", -100L);
 

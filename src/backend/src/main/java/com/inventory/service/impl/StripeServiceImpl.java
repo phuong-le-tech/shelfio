@@ -6,6 +6,7 @@ import com.inventory.model.User;
 import com.inventory.repository.StripeWebhookEventRepository;
 import com.inventory.repository.UserRepository;
 import com.inventory.service.IStripeService;
+import com.stripe.Stripe;
 import com.stripe.exception.SignatureVerificationException;
 import com.stripe.exception.StripeException;
 import com.stripe.model.Charge;
@@ -56,9 +57,16 @@ public class StripeServiceImpl implements IStripeService {
     @Value("${app.frontend-url}")
     private String frontendUrl;
 
+    private boolean isStripeConfigured() {
+        return Stripe.apiKey != null && !Stripe.apiKey.isBlank();
+    }
+
     @Override
     @Transactional
     public String createCheckoutSession(User user) {
+        if (!isStripeConfigured()) {
+            throw new IllegalStateException("Payment features are not available");
+        }
         try {
             String customerId = getOrCreateStripeCustomer(user);
 

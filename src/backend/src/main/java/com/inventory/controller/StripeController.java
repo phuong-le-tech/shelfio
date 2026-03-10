@@ -56,8 +56,13 @@ public class StripeController {
                 .body(Map.of("error", "Already a premium user"));
         }
 
-        String checkoutUrl = stripeService.createCheckoutSession(user);
-        return ResponseEntity.ok(Map.of("url", checkoutUrl));
+        try {
+            String checkoutUrl = stripeService.createCheckoutSession(user);
+            return ResponseEntity.ok(Map.of("url", checkoutUrl));
+        } catch (IllegalStateException e) {
+            return ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE)
+                .body(Map.of("error", e.getMessage()));
+        }
     }
 
     @PostMapping("/webhook")
