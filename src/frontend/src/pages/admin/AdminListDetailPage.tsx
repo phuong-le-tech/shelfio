@@ -204,7 +204,9 @@ export function AdminListDetailPage() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {items.map((item, index) => (
+                {items.map((item, index) => {
+                  const imageUrl = sanitizeImageUrl(item.imageUrl);
+                  return (
                   <motion.tr
                     key={item.id}
                     initial={{ opacity: 0, y: 10 }}
@@ -214,10 +216,10 @@ export function AdminListDetailPage() {
                   >
                     <TableCell className="py-5">
                       <div className="flex items-center gap-3">
-                        {sanitizeImageUrl(item.imageUrl) ? (
+                        {imageUrl ? (
                           <div className="h-10 w-10 rounded-lg bg-muted overflow-hidden flex-shrink-0">
                             <img
-                              src={sanitizeImageUrl(item.imageUrl)!}
+                              src={imageUrl}
                               alt={item.name}
                               className="h-full w-full object-cover"
                               loading="lazy"
@@ -242,7 +244,8 @@ export function AdminListDetailPage() {
                       {new Date(item.createdAt).toLocaleDateString('fr-FR')}
                     </TableCell>
                   </motion.tr>
-                ))}
+                  );
+                })}
               </TableBody>
             </Table>
 
