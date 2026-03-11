@@ -125,13 +125,13 @@ public class GlobalExceptionHandler {
 
     @ExceptionHandler(ImageProcessingException.class)
     public ResponseEntity<ApiErrorResponse> handleImageProcessing(ImageProcessingException e) {
-        log.error("Image processing failed: {}", e.getMessage());
+        log.error("Image processing failed", e);
         return buildErrorResponse(HttpStatus.UNPROCESSABLE_ENTITY, "Image processing failed");
     }
 
     @ExceptionHandler(ImageStorageException.class)
     public ResponseEntity<ApiErrorResponse> handleImageStorage(ImageStorageException e) {
-        log.error("Image storage operation failed: {}", e.getMessage());
+        log.error("Image storage operation failed", e);
         return buildErrorResponse(HttpStatus.BAD_GATEWAY, "Image storage service unavailable");
     }
 
