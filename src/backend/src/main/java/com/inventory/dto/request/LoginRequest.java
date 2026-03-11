@@ -11,6 +11,5 @@ public record LoginRequest(
     String email,
 
     @NotBlank(message = "Password is required")
-    @Size(max = 128, message = "Password must not exceed 128 characters")
     String password
 ) {}
