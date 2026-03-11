@@ -3,7 +3,9 @@ package com.inventory.service;
 import com.inventory.exception.ImageProcessingException;
 import com.sksamuel.scrimage.ImmutableImage;
 import com.sksamuel.scrimage.webp.WebpWriter;
+import jakarta.annotation.PreDestroy;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
 import javax.imageio.ImageIO;
@@ -30,7 +32,25 @@ public class ImageProcessingService {
     private static final long MAX_PIXEL_COUNT = 25_000_000L; // 25 megapixels
     private static final int PROCESSING_TIMEOUT_SECONDS = 30;
 
-    private final ExecutorService processingExecutor = Executors.newCachedThreadPool();
+    private final ExecutorService processingExecutor;
+
+    public ImageProcessingService(
+            @Value("${image.processing.thread-pool-size:#{T(java.lang.Runtime).getRuntime().availableProcessors()}}") int threadPoolSize) {
+        this.processingExecutor = Executors.newFixedThreadPool(threadPoolSize);
+    }
+
+    @PreDestroy
+    public void shutdownExecutor() {
+        processingExecutor.shutdown();
+        try {
+            if (!processingExecutor.awaitTermination(PROCESSING_TIMEOUT_SECONDS, TimeUnit.SECONDS)) {
+                processingExecutor.shutdownNow();
+            }
+        } catch (InterruptedException e) {
+            processingExecutor.shutdownNow();
+            Thread.currentThread().interrupt();
+        }
+    }
 
     public byte[] processToWebP(byte[] input) {
         validateImageDimensions(input);
