@@ -252,13 +252,15 @@ export default function ListDetail() {
       ) : (
         <>
           <StaggeredList className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5">
-            {items.map((item) => (
+            {items.map((item) => {
+              const safeImageUrl = sanitizeImageUrl(item.imageUrl);
+              return (
               <StaggeredItem key={item.id}>
                 <div className="group rounded-2xl border bg-card shadow-card overflow-hidden transition-all duration-300 hover:shadow-elevated">
                   <div className="aspect-[4/3] bg-muted flex items-center justify-center overflow-hidden relative">
-                    {sanitizeImageUrl(item.imageUrl) ? (
+                    {safeImageUrl ? (
                       <img
-                        src={sanitizeImageUrl(item.imageUrl)!}
+                        src={safeImageUrl}
                         alt={item.name}
                         loading="lazy"
                         className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
@@ -348,7 +350,8 @@ export default function ListDetail() {
                   </Link>
                 </div>
               </StaggeredItem>
-            ))}
+              );
+            })}
           </StaggeredList>
 
           {items.length === 0 && (
