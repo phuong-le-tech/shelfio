@@ -18,6 +18,5 @@ RUN chmod +x /docker-entrypoint.sh && \
     chown -R nginx:nginx /var/cache/nginx && \
     chown -R nginx:nginx /var/log/nginx && \
     touch /var/run/nginx.pid && chown nginx:nginx /var/run/nginx.pid
-USER nginx
 EXPOSE 80
 ENTRYPOINT ["/docker-entrypoint.sh"]
