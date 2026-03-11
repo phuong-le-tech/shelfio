@@ -1,0 +1,12 @@
+.git/
+.claude/
+.env*
+!.env.prod.example
+*.md
+docker-compose*.yml
+inventory_api_request/
+src/backend/target/
+src/backend/.idea/
+src/backend/*.iml
+src/frontend/node_modules/
+src/frontend/dist/
