@@ -51,7 +51,7 @@ export function MentionsLegales() {
                   <strong>Email :</strong> phuongle.tech@gmail.com
                 </li>
                 <li>
-                  <strong>Téléphone :</strong>+33 6 95 32 43 98
+                  <strong>Téléphone :</strong> +33 6 95 32 43 98
                 </li>
               </ul>
               <p className="mt-2">Directeur de la publication : Phuong LE</p>
