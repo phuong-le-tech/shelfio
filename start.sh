@@ -10,8 +10,9 @@ echo "Disk: $(df -h /app 2>/dev/null || echo 'df not available')"
 
 # Railway assigns PORT dynamically
 PORT=${PORT:-3000}
-BACKEND_URL="http://127.0.0.1:8080"
-export PORT BACKEND_URL
+BACKEND_PORT=8090
+BACKEND_URL="http://127.0.0.1:${BACKEND_PORT}"
+export PORT BACKEND_PORT BACKEND_URL
 
 echo "PORT=$PORT, BACKEND_URL=$BACKEND_URL"
 echo "SPRING_PROFILES_ACTIVE=${SPRING_PROFILES_ACTIVE:-not set}"
@@ -23,11 +24,11 @@ echo "=== Generated nginx config ==="
 cat /etc/nginx/http.d/default.conf
 echo "=== End nginx config ==="
 
-# Start Spring Boot backend on internal port 8080
+# Start Spring Boot backend on internal port
 echo "Starting Java process..."
 java -XX:MaxRAMPercentage=75.0 -XX:+UseG1GC \
-  -Dserver.port=8080 \
-  -Dmanagement.server.port=8081 \
+  -Dserver.port=${BACKEND_PORT} \
+  -Dmanagement.server.port=8091 \
   -jar /app/app.jar &
 BACKEND_PID=$!
 
@@ -41,7 +42,7 @@ for i in $(seq 1 60); do
     echo "Backend process exited unexpectedly with code $EXIT_CODE"
     exit 1
   fi
-  HEALTH_RESPONSE=$(wget -qO- http://127.0.0.1:8081/actuator/health 2>&1)
+  HEALTH_RESPONSE=$(wget -qO- http://127.0.0.1:8091/actuator/health 2>&1)
   if [ $? -eq 0 ]; then
     echo "Backend is ready. Health: $HEALTH_RESPONSE"
     READY=true
@@ -57,9 +58,9 @@ if [ "$READY" != "true" ]; then
 fi
 
 # Verify backend is also responding on the main app port
-echo "Verifying backend on port 8080..."
-APP_RESPONSE=$(wget -qO- http://127.0.0.1:8080/api/v1/auth/me 2>&1) || true
-echo "Port 8080 response: $APP_RESPONSE"
+echo "Verifying backend on port ${BACKEND_PORT}..."
+APP_RESPONSE=$(wget -qO- http://127.0.0.1:${BACKEND_PORT}/api/v1/auth/me 2>&1) || true
+echo "Port ${BACKEND_PORT} response: $APP_RESPONSE"
 
 # Forward shutdown signals
 trap "kill $BACKEND_PID 2>/dev/null; kill $NGINX_PID 2>/dev/null" TERM INT
@@ -80,7 +81,7 @@ while true; do
     echo "[MONITOR] Backend exit code: $?"
     break
   fi
-  MONITOR_HEALTH=$(wget -qO- http://127.0.0.1:8081/actuator/health 2>&1) || true
+  MONITOR_HEALTH=$(wget -qO- http://127.0.0.1:8091/actuator/health 2>&1) || true
   echo "[MONITOR] $(date -u) - Backend PID $BACKEND_PID alive - Health: $MONITOR_HEALTH"
 done &
 
