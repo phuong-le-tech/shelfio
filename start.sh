@@ -1,16 +1,28 @@
 #!/bin/sh
 set -e
 
+# Redirect all output to stdout so Railway captures everything
+exec 2>&1
+
+echo "=== Container starting ==="
+echo "Date: $(date -u)"
+echo "Memory: $(free -m 2>/dev/null || echo 'free not available')"
+echo "Disk: $(df -h /app 2>/dev/null || echo 'df not available')"
+
 # Railway assigns PORT dynamically
 PORT=${PORT:-3000}
 BACKEND_URL="http://127.0.0.1:8080"
 export PORT BACKEND_URL
 
+echo "PORT=$PORT, BACKEND_URL=$BACKEND_URL"
+echo "SPRING_PROFILES_ACTIVE=${SPRING_PROFILES_ACTIVE:-not set}"
+echo "DB_HOST=${DB_HOST:+set}, DB_PORT=${DB_PORT:-5432}, DB_NAME=${DB_NAME:+set}"
+
 # Generate nginx config from template
 envsubst '${PORT} ${BACKEND_URL}' < /etc/nginx/templates/default.conf.template > /etc/nginx/http.d/default.conf
-
-# Redirect all output to stdout so Railway captures everything
-exec 2>&1
+echo "=== Generated nginx config ==="
+cat /etc/nginx/http.d/default.conf
+echo "=== End nginx config ==="
 
 # Start Spring Boot backend on internal port 8080
 echo "Starting Java process..."
@@ -45,14 +57,33 @@ if [ "$READY" != "true" ]; then
   exit 1
 fi
 
-# Forward shutdown signals to backend process
-trap "kill $BACKEND_PID 2>/dev/null" TERM INT
+# Verify backend is also responding on the main app port
+echo "Verifying backend on port 8080..."
+APP_RESPONSE=$(wget -qO- http://127.0.0.1:8080/api/v1/auth/me 2>&1) || true
+echo "Port 8080 response: $APP_RESPONSE"
+
+# Forward shutdown signals
+trap "kill $BACKEND_PID 2>/dev/null; kill $NGINX_PID 2>/dev/null" TERM INT
 
 # Start nginx in foreground
+echo "Starting nginx on port $PORT..."
 nginx -g "daemon off;" &
 NGINX_PID=$!
 
-echo "Application started on port $PORT"
+echo "=== Application started on port $PORT ==="
+
+# Background monitor: check backend health every 30 seconds
+while true; do
+  sleep 30
+  if ! kill -0 "$BACKEND_PID" 2>/dev/null; then
+    echo "[MONITOR] Backend process (PID: $BACKEND_PID) is DEAD at $(date -u)"
+    wait "$BACKEND_PID" 2>/dev/null
+    echo "[MONITOR] Backend exit code: $?"
+    break
+  fi
+  MONITOR_HEALTH=$(wget -qO- http://127.0.0.1:8081/actuator/health 2>&1) || true
+  echo "[MONITOR] $(date -u) - Backend PID $BACKEND_PID alive - Health: $MONITOR_HEALTH"
+done &
 
 # Wait for nginx (main process for container lifecycle)
 wait $NGINX_PID
