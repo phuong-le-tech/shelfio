@@ -79,6 +79,8 @@ while true; do
     echo "[MONITOR] Backend process (PID: $BACKEND_PID) is DEAD at $(date -u)"
     wait "$BACKEND_PID" 2>/dev/null
     echo "[MONITOR] Backend exit code: $?"
+    echo "[MONITOR] Killing nginx to trigger container restart..."
+    kill "$NGINX_PID" 2>/dev/null
     break
   fi
   MONITOR_HEALTH=$(wget -qO- http://127.0.0.1:8091/actuator/health 2>&1) || true
