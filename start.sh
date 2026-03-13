@@ -20,11 +20,13 @@ BACKEND_PID=$!
 echo "Waiting for backend to start..."
 READY=false
 for i in $(seq 1 60); do
-  if wget -qO- http://127.0.0.1:8081/actuator/health >/dev/null 2>&1; then
-    echo "Backend is ready."
+  HEALTH_RESPONSE=$(wget -qO- http://127.0.0.1:8081/actuator/health 2>&1)
+  if [ $? -eq 0 ]; then
+    echo "Backend is ready. Health: $HEALTH_RESPONSE"
     READY=true
     break
   fi
+  echo "Health check attempt $i/60: $HEALTH_RESPONSE"
   if ! kill -0 "$BACKEND_PID" 2>/dev/null; then
     echo "Backend process exited unexpectedly." >&2
     exit 1
