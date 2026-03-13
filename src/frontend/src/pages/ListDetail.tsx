@@ -16,6 +16,7 @@ import {
   formatStatus,
   STATUS_OPTIONS,
   STATUS_LABELS,
+  STATUS_BADGE_VARIANTS,
   formatCustomFieldValue,
 } from "../types/item";
 import { SkeletonCard, SkeletonText } from "../components/Skeleton";
@@ -41,16 +42,6 @@ import { queryKeys } from "../lib/queryKeys";
 import { Breadcrumb } from "../components/Breadcrumb";
 
 const ITEMS_PER_PAGE = 12;
-
-const statusToBadgeVariant: Record<
-  ItemStatus,
-  "success" | "warning" | "error" | "default"
-> = {
-  AVAILABLE: "success",
-  TO_VERIFY: "warning",
-  NEEDS_MAINTENANCE: "default",
-  DAMAGED: "error",
-};
 
 export default function ListDetail() {
   const { id } = useParams();
@@ -272,7 +263,7 @@ export default function ListDetail() {
                       </div>
                     )}
                     <div className="absolute top-3 right-3">
-                      <Badge variant={statusToBadgeVariant[item.status]}>
+                      <Badge variant={STATUS_BADGE_VARIANTS[item.status]}>
                         {formatStatus(item.status)}
                       </Badge>
                     </div>

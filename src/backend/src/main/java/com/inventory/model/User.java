@@ -46,6 +46,9 @@ public class User {
     @Column(name = "stripe_payment_id")
     private String stripePaymentId;
 
+    @Column(name = "withdrawal_waiver_at")
+    private LocalDateTime withdrawalWaiverAt;
+
     @Column(nullable = false)
     private boolean enabled = true;
 

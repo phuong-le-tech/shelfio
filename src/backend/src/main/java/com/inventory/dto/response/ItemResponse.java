@@ -28,9 +28,7 @@ public record ItemResponse(
                 item.getStock(),
                 item.getImageKey() != null
                         ? imageStorageService.getPresignedUrl(item.getImageKey())
-                        : (item.getImageData() != null
-                                ? "/api/v1/items/" + item.getId() + "/image"
-                                : null),
+                        : null,
                 item.getCustomFieldValues() != null
                         ? item.getCustomFieldValues()
                         : Map.of(),

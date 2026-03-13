@@ -29,9 +29,7 @@ public record AdminItemResponse(
                 item.getStock(),
                 item.getImageKey() != null
                         ? imageStorageService.getPresignedUrl(item.getImageKey())
-                        : (item.getImageData() != null
-                                ? "/api/v1/items/" + item.getId() + "/image"
-                                : null),
+                        : null,
                 item.getItemList() != null ? item.getItemList().getId() : null,
                 item.getItemList() != null ? item.getItemList().getName() : null,
                 item.getItemList() != null ? item.getItemList().getUser().getId() : null,

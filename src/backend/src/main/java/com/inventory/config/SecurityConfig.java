@@ -67,7 +67,8 @@ public class SecurityConfig {
         if (environment.acceptsProfiles(Profiles.of("prod"))) {
             for (String origin : origins) {
                 if (origin.trim().startsWith("http://")) {
-                    log.warn("Non-HTTPS CORS origin in production: {}", origin.trim());
+                    throw new IllegalStateException(
+                            "Non-HTTPS CORS origin not allowed in production: " + origin.trim());
                 }
             }
         }

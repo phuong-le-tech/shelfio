@@ -17,8 +17,8 @@ export function FeaturesSection() {
               Tout ce dont vous avez besoin
             </h2>
             <p className="text-muted-foreground text-lg max-w-2xl mx-auto">
-              Des outils puissants pour gerer votre inventaire efficacement,
-              quelle que soit la taille de votre activite.
+              Des outils puissants pour gérer votre inventaire efficacement,
+              quelle que soit la taille de votre activité.
             </p>
           </div>
         </BlurFade>
@@ -58,7 +58,7 @@ export function ListsPreviewSection() {
               Des listes puissantes et flexibles
             </h2>
             <p className="text-muted-foreground text-lg max-w-2xl mx-auto">
-              Creez des listes personnalisees avec des champs sur mesure pour
+              Créez des listes personnalisées avec des champs sur mesure pour
               organiser votre inventaire comme vous le souhaitez.
             </p>
           </div>

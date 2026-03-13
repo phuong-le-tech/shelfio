@@ -5,6 +5,7 @@ import com.inventory.exception.UnauthorizedException;
 import com.inventory.model.User;
 import com.inventory.repository.StripeWebhookEventRepository;
 import com.inventory.repository.UserRepository;
+import com.inventory.service.EmailSender;
 import com.inventory.service.IStripeService;
 import com.stripe.Stripe;
 import com.stripe.exception.SignatureVerificationException;
@@ -26,6 +27,8 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
 import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
@@ -37,6 +40,7 @@ public class StripeServiceImpl implements IStripeService {
 
     private final UserRepository userRepository;
     private final StripeWebhookEventRepository webhookEventRepository;
+    private final EmailSender emailSender;
 
     @Value("${stripe.webhook-secret:}")
     private String webhookSecret;
@@ -224,10 +228,43 @@ public class StripeServiceImpl implements IStripeService {
             user.setStripePaymentId(paymentIntentId);
             userRepository.save(user);
             log.info("User {} upgraded to PREMIUM_USER", userId);
+
+            sendPurchaseConfirmationEmail(user);
         }, () -> {
             log.error("User {} not found for Stripe webhook", userId);
             Sentry.captureMessage("Stripe webhook: user not found " + userId);
         });
+    }
+
+    private void sendPurchaseConfirmationEmail(User user) {
+        try {
+            String formattedAmount = String.format("%.2f", priceAmount / 100.0);
+            String date = LocalDateTime.now().format(DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm"));
+
+            String html = """
+                <h2>Confirmation de votre achat Premium</h2>
+                <p>Bonjour,</p>
+                <p>Nous confirmons votre achat sur <strong>Inventory App</strong>.</p>
+                <table style="border-collapse:collapse;margin:16px 0;">
+                  <tr><td style="padding:4px 12px 4px 0;font-weight:bold;">Produit</td><td>Premium — création de listes illimitée</td></tr>
+                  <tr><td style="padding:4px 12px 4px 0;font-weight:bold;">Montant</td><td>%s %s TTC (paiement unique)</td></tr>
+                  <tr><td style="padding:4px 12px 4px 0;font-weight:bold;">Date</td><td>%s</td></tr>
+                  <tr><td style="padding:4px 12px 4px 0;font-weight:bold;">Moyen de paiement</td><td>Carte bancaire via Stripe</td></tr>
+                </table>
+                <p>Conformément à l'article L221-28 du Code de la consommation, vous avez expressément consenti \
+                à l'exécution immédiate du service numérique et renoncé à votre droit de rétractation de 14 jours.</p>
+                <p>Pour toute question, contactez-nous à : <a href="mailto:phuongle.tech@gmail.com">phuongle.tech@gmail.com</a></p>
+                <p style="margin-top:24px;font-size:12px;color:#666;">
+                  Inventory App — Phuong LE
+                </p>
+                """.formatted(formattedAmount, priceCurrency.toUpperCase(), date);
+
+            emailSender.send(user.getEmail(), "Confirmation de votre achat Premium — Inventory App", html);
+            log.info("Purchase confirmation email sent to user {}", user.getId());
+        } catch (Exception e) {
+            log.error("Failed to send purchase confirmation email to user {}: {}", user.getId(), e.getMessage());
+            Sentry.captureException(e);
+        }
     }
 
     private void handleChargeRefunded(Event event) {
@@ -347,6 +384,7 @@ public class StripeServiceImpl implements IStripeService {
             user.setStripePaymentId(paymentIntentId);
             userRepository.save(user);
             log.info("User {} upgraded to PREMIUM_USER via payment_intent.succeeded", user.getId());
+            sendPurchaseConfirmationEmail(user);
         }, () -> {
             log.error("No user found with stripeCustomerId={} for PaymentIntent {}", customerId, paymentIntentId);
             Sentry.captureMessage("Stripe webhook: no user for customer " + customerId);

@@ -16,8 +16,6 @@ import static org.springframework.util.StringUtils.hasText;
 
 public class ItemSpecification {
 
-    private static final String LIKE_ESCAPE_CHAR = "\\";
-
     private ItemSpecification() {
         // Utility class
     }
@@ -34,9 +32,9 @@ public class ItemSpecification {
 
             if (criteria != null) {
                 if (hasText(criteria.search())) {
-                    String escaped = escapeLikePattern(criteria.search().toLowerCase());
+                    String escaped = SpecificationUtils.escapeLikePattern(criteria.search().toLowerCase());
                     String pattern = "%" + escaped + "%";
-                    predicates.add(cb.like(cb.lower(root.get("name")), pattern, LIKE_ESCAPE_CHAR.charAt(0)));
+                    predicates.add(cb.like(cb.lower(root.get("name")), pattern, SpecificationUtils.LIKE_ESCAPE_CHAR.charAt(0)));
                 }
 
                 if (criteria.itemListId() != null) {
@@ -50,12 +48,5 @@ public class ItemSpecification {
 
             return cb.and(predicates.toArray(new Predicate[0]));
         };
-    }
-
-    private static String escapeLikePattern(String input) {
-        return input
-                .replace(LIKE_ESCAPE_CHAR, LIKE_ESCAPE_CHAR + LIKE_ESCAPE_CHAR)
-                .replace("%", LIKE_ESCAPE_CHAR + "%")
-                .replace("_", LIKE_ESCAPE_CHAR + "_");
     }
 }

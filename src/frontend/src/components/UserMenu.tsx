@@ -1,6 +1,5 @@
-import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { Settings, LogOut, Trash2, ChevronUp, Crown } from "lucide-react";
+import { Settings, LogOut, ChevronUp, Crown } from "lucide-react";
 import { useAuth } from "../contexts/AuthContext";
 import {
   DropdownMenu,
@@ -10,20 +9,12 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import ConfirmModal from "./ConfirmModal";
 
 export function UserMenu() {
-  const { user, logout, deleteAccount, isAdmin, isPremium } = useAuth();
+  const { user, logout, isAdmin, isPremium } = useAuth();
   const navigate = useNavigate();
-  const [showDeleteModal, setShowDeleteModal] = useState(false);
-
   const handleLogout = async () => {
     await logout();
-    navigate("/login");
-  };
-
-  const handleDeleteAccount = async () => {
-    await deleteAccount();
     navigate("/login");
   };
 
@@ -72,12 +63,9 @@ export function UserMenu() {
               <DropdownMenuSeparator />
             </>
           )}
-          <DropdownMenuItem
-            onClick={() => setShowDeleteModal(true)}
-            className="text-destructive focus:text-destructive"
-          >
-            <Trash2 className="w-4 h-4 mr-2" />
-            Supprimer mon compte
+          <DropdownMenuItem onClick={() => navigate("/settings")}>
+            <Settings className="w-4 h-4 mr-2" />
+            Paramètres
           </DropdownMenuItem>
           <DropdownMenuSeparator />
           <DropdownMenuItem onClick={handleLogout}>
@@ -87,15 +75,6 @@ export function UserMenu() {
         </DropdownMenuContent>
       </DropdownMenu>
 
-      <ConfirmModal
-        isOpen={showDeleteModal}
-        title="Supprimer votre compte"
-        message="Cette action est irréversible. Toutes vos listes et vos objets seront définitivement supprimés."
-        confirmLabel="Supprimer définitivement"
-        requireTyping="SUPPRIMER"
-        onConfirm={handleDeleteAccount}
-        onCancel={() => setShowDeleteModal(false)}
-      />
     </>
   );
 }

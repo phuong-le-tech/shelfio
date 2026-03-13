@@ -71,11 +71,6 @@ export default {
             text: 'hsl(var(--status-ready-text))',
             border: 'hsl(var(--status-ready-border))',
           },
-          archived: {
-            DEFAULT: 'hsl(var(--status-archived))',
-            text: 'hsl(var(--status-archived-text))',
-            border: 'hsl(var(--status-archived-border))',
-          },
         },
       },
 

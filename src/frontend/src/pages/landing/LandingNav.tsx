@@ -32,9 +32,15 @@ export function LandingFooter() {
     <footer className="border-t py-8" role="contentinfo">
       <div className="max-w-6xl mx-auto px-6 flex flex-col sm:flex-row items-center justify-between gap-4">
         <p className="text-sm text-muted-foreground">
-          &copy; {new Date().getFullYear()} Inventory. Tous droits reserves.
+          &copy; {new Date().getFullYear()} Inventory. Tous droits réservés.
         </p>
-        <nav aria-label="Liens legaux" className="flex items-center gap-6">
+        <nav aria-label="Liens légaux" className="flex items-center gap-6">
+          <Link
+            to="/mentions-legales"
+            className="text-sm text-muted-foreground hover:text-foreground transition-colors"
+          >
+            Mentions légales
+          </Link>
           <Link
             to="/terms"
             className="text-sm text-muted-foreground hover:text-foreground transition-colors"
@@ -45,7 +51,7 @@ export function LandingFooter() {
             to="/privacy"
             className="text-sm text-muted-foreground hover:text-foreground transition-colors"
           >
-            Politique de confidentialite
+            Politique de confidentialité
           </Link>
         </nav>
       </div>

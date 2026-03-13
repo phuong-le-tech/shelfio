@@ -5,6 +5,7 @@ import com.inventory.exception.UnauthorizedException;
 import com.inventory.model.User;
 import com.inventory.repository.StripeWebhookEventRepository;
 import com.inventory.repository.UserRepository;
+import com.inventory.service.EmailSender;
 import com.inventory.service.impl.StripeServiceImpl;
 import com.stripe.Stripe;
 import com.stripe.exception.SignatureVerificationException;
@@ -42,6 +43,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
@@ -53,6 +55,9 @@ class StripeServiceImplTest {
 
     @Mock
     private StripeWebhookEventRepository webhookEventRepository;
+
+    @Mock
+    private EmailSender emailSender;
 
     @InjectMocks
     private StripeServiceImpl stripeService;
@@ -248,6 +253,7 @@ class StripeServiceImplTest {
             assertThat(testUser.getRole()).isEqualTo(Role.PREMIUM_USER);
             assertThat(testUser.getStripePaymentId()).isEqualTo("pi_test_123");
             verify(userRepository).save(testUser);
+            verify(emailSender).send(eq("test@example.com"), anyString(), anyString());
         }
 
         @Test
@@ -439,6 +445,7 @@ class StripeServiceImplTest {
             verify(userRepository, never()).findById(any());
             assertThat(testUser.getRole()).isEqualTo(Role.PREMIUM_USER);
             verify(userRepository).save(testUser);
+            verify(emailSender).send(eq("test@example.com"), anyString(), anyString());
         }
 
         @Test
@@ -468,6 +475,7 @@ class StripeServiceImplTest {
 
             verify(userRepository, never()).save(any());
             assertThat(testUser.getRole()).isEqualTo(Role.PREMIUM_USER);
+            verify(emailSender, never()).send(anyString(), anyString(), anyString());
         }
 
         @Test
@@ -497,6 +505,7 @@ class StripeServiceImplTest {
 
             verify(userRepository, never()).save(any());
             assertThat(testUser.getRole()).isEqualTo(Role.ADMIN);
+            verify(emailSender, never()).send(anyString(), anyString(), anyString());
         }
 
         @Test
@@ -524,6 +533,7 @@ class StripeServiceImplTest {
             executeWebhookWithEvent(event);
 
             verify(userRepository, never()).save(any());
+            verify(emailSender, never()).send(anyString(), anyString(), anyString());
         }
     }
 
@@ -571,6 +581,7 @@ class StripeServiceImplTest {
             assertThat(testUser.getRole()).isEqualTo(Role.PREMIUM_USER);
             assertThat(testUser.getStripePaymentId()).isEqualTo("pi_test_200");
             verify(userRepository).save(testUser);
+            verify(emailSender).send(eq("test@example.com"), anyString(), anyString());
         }
 
         @Test
@@ -598,6 +609,7 @@ class StripeServiceImplTest {
             assertThat(testUser.getRole()).isEqualTo(Role.PREMIUM_USER);
             assertThat(testUser.getStripePaymentId()).isEqualTo("pi_test_fallback");
             verify(userRepository).save(testUser);
+            verify(emailSender).send(eq("test@example.com"), anyString(), anyString());
         }
 
         @Test

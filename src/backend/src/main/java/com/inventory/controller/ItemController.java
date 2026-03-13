@@ -94,7 +94,6 @@ public class ItemController {
     public ResponseEntity<?> getItemImage(@PathVariable @NonNull UUID id) {
         Item item = itemService.getItemById(id)
                 .orElseThrow(() -> new ItemNotFoundException(id));
-        // Prefer R2 presigned URL redirect
         if (item.getImageKey() != null) {
             String presignedUrl = imageStorageService.getPresignedUrl(item.getImageKey());
             if (presignedUrl != null) {
@@ -103,13 +102,6 @@ public class ItemController {
                         .header("Cache-Control", "private, max-age=" + IMAGE_CACHE_MAX_AGE_SECONDS)
                         .build();
             }
-        }
-        // Fallback: serve legacy BYTEA data
-        if (item.getImageData() != null && item.getImageData().length > 0) {
-            return ResponseEntity.ok()
-                    .contentType(MediaType.parseMediaType(
-                            Objects.requireNonNull(item.getContentType(), "Content type not found")))
-                    .body(item.getImageData());
         }
         return ResponseEntity.notFound().build();
     }

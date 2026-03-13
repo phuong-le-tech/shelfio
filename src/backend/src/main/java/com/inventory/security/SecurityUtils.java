@@ -30,13 +30,4 @@ public class SecurityUtils {
             .anyMatch(a -> a.getAuthority().equals("ROLE_ADMIN"));
     }
 
-    public boolean isPremium() {
-        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
-        if (authentication == null) {
-            return false;
-        }
-        return authentication.getAuthorities().stream()
-            .anyMatch(a -> a.getAuthority().equals("ROLE_PREMIUM_USER")
-                        || a.getAuthority().equals("ROLE_ADMIN"));
-    }
 }

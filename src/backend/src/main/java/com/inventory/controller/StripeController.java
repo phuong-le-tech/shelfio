@@ -1,5 +1,6 @@
 package com.inventory.controller;
 
+import com.inventory.dto.request.CheckoutRequest;
 import com.inventory.enums.Role;
 import com.inventory.exception.RateLimitExceededException;
 import com.inventory.exception.UserNotFoundException;
@@ -9,6 +10,7 @@ import com.inventory.security.ApiRateLimiter;
 import com.inventory.security.CustomUserDetails;
 import com.inventory.service.IStripeService;
 import jakarta.servlet.http.HttpServletRequest;
+import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -17,6 +19,7 @@ import org.springframework.web.bind.annotation.*;
 
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
+import java.time.LocalDateTime;
 import java.util.Map;
 
 @RestController
@@ -38,7 +41,8 @@ public class StripeController {
 
     @PostMapping("/checkout")
     public ResponseEntity<Map<String, String>> createCheckoutSession(
-            @AuthenticationPrincipal CustomUserDetails userDetails
+            @AuthenticationPrincipal CustomUserDetails userDetails,
+            @Valid @RequestBody CheckoutRequest request
     ) {
         if (!checkoutRateLimiter.tryAcquire("checkout:user:" + userDetails.getId()).allowed()) {
             throw new RateLimitExceededException("Too many checkout requests. Please try again later.");
@@ -54,6 +58,11 @@ public class StripeController {
         if (user.getRole() == Role.PREMIUM_USER) {
             return ResponseEntity.badRequest()
                 .body(Map.of("error", "Already a premium user"));
+        }
+
+        if (user.getWithdrawalWaiverAt() == null) {
+            user.setWithdrawalWaiverAt(LocalDateTime.now());
+            userRepository.save(user);
         }
 
         try {

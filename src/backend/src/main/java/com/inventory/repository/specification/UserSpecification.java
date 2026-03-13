@@ -14,8 +14,6 @@ import static org.springframework.util.StringUtils.hasText;
 
 public class UserSpecification {
 
-    private static final String LIKE_ESCAPE_CHAR = "\\";
-
     private UserSpecification() {
         // Utility class
     }
@@ -27,9 +25,9 @@ public class UserSpecification {
 
             if (hasText(search)) {
                 @SuppressWarnings("null")
-                String escaped = escapeLikePattern(search.toLowerCase());
+                String escaped = SpecificationUtils.escapeLikePattern(search.toLowerCase());
                 String pattern = "%" + escaped + "%";
-                predicates.add(cb.like(cb.lower(root.get("email")), pattern, LIKE_ESCAPE_CHAR.charAt(0)));
+                predicates.add(cb.like(cb.lower(root.get("email")), pattern, SpecificationUtils.LIKE_ESCAPE_CHAR.charAt(0)));
             }
 
             if (role != null) {
@@ -42,12 +40,5 @@ public class UserSpecification {
 
             return cb.and(predicates.toArray(new Predicate[0]));
         };
-    }
-
-    private static String escapeLikePattern(String input) {
-        return input
-                .replace(LIKE_ESCAPE_CHAR, LIKE_ESCAPE_CHAR + LIKE_ESCAPE_CHAR)
-                .replace("%", LIKE_ESCAPE_CHAR + "%")
-                .replace("_", LIKE_ESCAPE_CHAR + "_");
     }
 }

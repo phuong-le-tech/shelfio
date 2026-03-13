@@ -268,8 +268,8 @@ class ItemServiceImplTest {
         }
 
         @Test
-        @DisplayName("should store image data when provided")
-        void createItem_withImage_storesImageData() throws IOException {
+        @DisplayName("should upload image to S3 when provided")
+        void createItem_withImage_uploadsToS3() throws IOException {
             ItemRequest request = new ItemRequest("New Item", testListId, ItemStatus.DAMAGED, 10, null);
             // JPEG magic bytes (FF D8 FF) followed by dummy data
             byte[] jpegBytes = new byte[]{(byte) 0xFF, (byte) 0xD8, (byte) 0xFF, (byte) 0xE0, 0, 0, 0, 0, 0, 0, 0, 0};
@@ -291,7 +291,7 @@ class ItemServiceImplTest {
 
         @Test
         @DisplayName("should create item with PNG image")
-        void createItem_withPngImage_storesImageData() throws IOException {
+        void createItem_withPngImage_uploadsToS3() throws IOException {
             ItemRequest request = new ItemRequest("PNG Item", testListId, ItemStatus.AVAILABLE, 1, null);
             byte[] pngBytes = new byte[]{(byte) 0x89, 0x50, 0x4E, 0x47, 0, 0, 0, 0, 0, 0, 0, 0};
             MockMultipartFile image = new MockMultipartFile("image", "test.png", "image/png", pngBytes);
@@ -309,7 +309,7 @@ class ItemServiceImplTest {
 
         @Test
         @DisplayName("should create item with GIF image")
-        void createItem_withGifImage_storesImageData() throws IOException {
+        void createItem_withGifImage_uploadsToS3() throws IOException {
             ItemRequest request = new ItemRequest("GIF Item", testListId, ItemStatus.AVAILABLE, 1, null);
             byte[] gifBytes = new byte[]{0x47, 0x49, 0x46, 0x38, 0x39, 0x61, 0, 0, 0, 0, 0, 0};
             MockMultipartFile image = new MockMultipartFile("image", "test.gif", "image/gif", gifBytes);
@@ -327,7 +327,7 @@ class ItemServiceImplTest {
 
         @Test
         @DisplayName("should create item with WebP image")
-        void createItem_withWebpImage_storesImageData() throws IOException {
+        void createItem_withWebpImage_uploadsToS3() throws IOException {
             ItemRequest request = new ItemRequest("WebP Item", testListId, ItemStatus.AVAILABLE, 1, null);
             // RIFF....WEBP
             byte[] webpBytes = new byte[]{0x52, 0x49, 0x46, 0x46, 0, 0, 0, 0, 0x57, 0x45, 0x42, 0x50};
@@ -460,7 +460,7 @@ class ItemServiceImplTest {
 
         @Test
         @DisplayName("should update item with image")
-        void updateItem_withImage_updatesImageData() throws IOException {
+        void updateItem_withImage_uploadsToS3() throws IOException {
             ItemRequest request = new ItemRequest("Updated", testListId, ItemStatus.AVAILABLE, 5, null);
             byte[] pngBytes = new byte[]{(byte) 0x89, 0x50, 0x4E, 0x47, 0, 0, 0, 0, 0, 0, 0, 0};
             MockMultipartFile image = new MockMultipartFile("image", "test.png", "image/png", pngBytes);
@@ -476,30 +476,6 @@ class ItemServiceImplTest {
 
             assertThat(result.getImageKey()).isNotNull();
             verify(imageStorageService).upload(anyString(), any(byte[].class), eq("image/webp"));
-        }
-
-        @Test
-        @DisplayName("should clear legacy imageData and contentType when uploading new image")
-        void updateItem_withImage_clearsLegacyImageData() throws IOException {
-            testItem.setImageData(new byte[]{1, 2, 3});
-            testItem.setContentType("image/jpeg");
-
-            ItemRequest request = new ItemRequest("Updated", testListId, ItemStatus.AVAILABLE, 5, null);
-            byte[] pngBytes = new byte[]{(byte) 0x89, 0x50, 0x4E, 0x47, 0, 0, 0, 0, 0, 0, 0, 0};
-            MockMultipartFile image = new MockMultipartFile("image", "test.png", "image/png", pngBytes);
-
-            when(securityUtils.isAdmin()).thenReturn(true);
-            when(itemRepository.findById(testId)).thenReturn(Optional.of(testItem));
-            when(itemListRepository.findById(testListId)).thenReturn(Optional.of(testList));
-            when(itemRepository.save(any(Item.class))).thenAnswer(invocation -> invocation.getArgument(0));
-            when(imageProcessingService.processToWebP(any())).thenReturn(new byte[]{1, 2, 3});
-            when(imageStorageService.upload(anyString(), any(byte[].class), anyString())).thenReturn("items/test-key.webp");
-
-            Item result = itemService.updateItem(testId, request, image);
-
-            assertThat(result.getImageData()).isNull();
-            assertThat(result.getContentType()).isNull();
-            assertThat(result.getImageKey()).isNotNull();
         }
 
         @Test

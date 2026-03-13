@@ -23,7 +23,7 @@ import {
   StaggeredList,
   StaggeredItem,
 } from "@/components/effects/staggered-list";
-import { STATUS_LABELS, ItemStatus } from "../types/item";
+import { STATUS_LABELS, STATUS_BADGE_VARIANTS, ItemStatus } from "../types/item";
 import { Badge } from "@/components/ui/badge";
 import {
   DropdownMenu,
@@ -32,13 +32,6 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import ListCombobox from "../components/ListCombobox";
-
-const statusToBadgeVariant: Record<string, "success" | "warning" | "error" | "default"> = {
-  AVAILABLE: "success",
-  TO_VERIFY: "warning",
-  NEEDS_MAINTENANCE: "default",
-  DAMAGED: "error",
-};
 
 export default function Dashboard() {
   const { data: stats, isLoading: loading, error, refetch: reload } = useQuery({
@@ -332,7 +325,7 @@ export default function Dashboard() {
                           {item.quantity}
                         </td>
                         <td className="px-5 py-4">
-                          <Badge variant={statusToBadgeVariant[item.status] || "default"}>
+                          <Badge variant={STATUS_BADGE_VARIANTS[item.status as ItemStatus] || "default"}>
                             {STATUS_LABELS[item.status as ItemStatus] ||
                               item.status}
                           </Badge>

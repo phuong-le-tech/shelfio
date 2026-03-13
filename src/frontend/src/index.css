@@ -47,9 +47,6 @@
     --status-ready: 142 76% 93%;
     --status-ready-text: 143 64% 24%;
     --status-ready-border: 142 69% 73%;
-    --status-archived: 220 14% 96%;
-    --status-archived-text: 220 9% 46%;
-    --status-archived-border: 220 13% 83%;
 
     /* Badge semantic tokens */
     --badge-success: 142 76% 93%;
@@ -107,9 +104,6 @@
     --status-ready: 150 50% 14%;
     --status-ready-text: 142 72% 65%;
     --status-ready-border: 145 45% 28%;
-    --status-archived: 240 4% 14%;
-    --status-archived-text: 240 4% 58%;
-    --status-archived-border: 240 4% 22%;
 
     /* Badge semantic tokens - dark */
     --badge-success: 142 50% 15%;

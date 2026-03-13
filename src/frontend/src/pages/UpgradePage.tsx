@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
 import { Crown, Check, Sparkles } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { stripeApi } from '../services/stripeApi';
@@ -13,11 +13,12 @@ export default function UpgradePage() {
   const navigate = useNavigate();
   const { showToast } = useToast();
   const [loading, setLoading] = useState(false);
+  const [waiverAccepted, setWaiverAccepted] = useState(false);
 
   const handleUpgrade = async () => {
     setLoading(true);
     try {
-      const { url } = await stripeApi.createCheckoutSession();
+      const { url } = await stripeApi.createCheckoutSession({ withdrawalWaiverAccepted: true });
       if (!url || !url.startsWith('https://checkout.stripe.com/')) {
         showToast('URL de paiement invalide', 'error');
         setLoading(false);
@@ -137,12 +138,33 @@ export default function UpgradePage() {
                 <span>Accès à vie</span>
               </li>
             </ul>
-            <Button className="w-full" onClick={handleUpgrade} disabled={loading}>
-              {loading ? 'Redirection...' : 'Passer en Premium'}
+            <Button className="w-full" onClick={handleUpgrade} disabled={loading || !waiverAccepted}>
+              {loading ? 'Redirection...' : 'Payer 2 €'}
             </Button>
           </div>
         </BlurFade>
       </div>
+
+      {/* Withdrawal waiver — Consumer Rights Directive Art. L221-28 */}
+      <BlurFade delay={0.4}>
+        <div className="mt-8 max-w-xl mx-auto">
+          <label className="flex items-start gap-3 cursor-pointer select-none">
+            <input
+              type="checkbox"
+              checked={waiverAccepted}
+              onChange={(e) => setWaiverAccepted(e.target.checked)}
+              className="mt-1 h-4 w-4 rounded border-border accent-brand shrink-0"
+            />
+            <span className="text-sm text-muted-foreground leading-relaxed">
+              J'accepte que le service Premium commence immédiatement et je reconnais
+              perdre mon{' '}
+              <Link to="/terms" className="underline underline-offset-2 hover:text-foreground">
+                droit de rétractation de 14 jours
+              </Link>.
+            </span>
+          </label>
+        </div>
+      </BlurFade>
     </div>
   );
 }

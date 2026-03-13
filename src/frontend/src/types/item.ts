@@ -189,3 +189,10 @@ export const STATUS_LABELS: Record<ItemStatus, string> = {
 export const formatStatus = (status: ItemStatus): string => {
   return STATUS_LABELS[status] || status;
 };
+
+export const STATUS_BADGE_VARIANTS: Record<ItemStatus, "success" | "warning" | "error" | "default"> = {
+  AVAILABLE: "success",
+  TO_VERIFY: "warning",
+  NEEDS_MAINTENANCE: "default",
+  DAMAGED: "error",
+};

@@ -51,13 +51,6 @@ public class Item {
     @Column(name = "custom_field_values", columnDefinition = "json")
     private Map<String, Object> customFieldValues;
 
-    @Lob
-    @Column(name = "image_data")
-    private byte[] imageData;
-
-    @Column(name = "content_type")
-    private String contentType;
-
     @Column(name = "image_key", length = 500)
     private String imageKey;
 

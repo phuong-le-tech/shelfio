@@ -1,6 +1,6 @@
 package com.inventory.security;
 
-import com.inventory.enums.Role;
+
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
@@ -104,38 +104,4 @@ class SecurityUtilsTest {
         }
     }
 
-    @Nested
-    @DisplayName("isPremium")
-    class IsPremiumTests {
-
-        @Test
-        @DisplayName("should return true for PREMIUM_USER role")
-        void trueForPremiumUser() {
-            setAuthentication(UUID.randomUUID(), "premium@example.com", "PREMIUM_USER");
-
-            assertThat(securityUtils.isPremium()).isTrue();
-        }
-
-        @Test
-        @DisplayName("should return true for ADMIN role")
-        void trueForAdmin() {
-            setAuthentication(UUID.randomUUID(), "admin@example.com", "ADMIN");
-
-            assertThat(securityUtils.isPremium()).isTrue();
-        }
-
-        @Test
-        @DisplayName("should return false for USER role")
-        void falseForUser() {
-            setAuthentication(UUID.randomUUID(), "user@example.com", "USER");
-
-            assertThat(securityUtils.isPremium()).isFalse();
-        }
-
-        @Test
-        @DisplayName("should return false when no authentication")
-        void falseWhenNoAuth() {
-            assertThat(securityUtils.isPremium()).isFalse();
-        }
-    }
 }

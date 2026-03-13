@@ -16,7 +16,7 @@ export const MOCK_STATS = {
 };
 
 export const MOCK_LISTS_OVERVIEW = [
-  { listName: "Electronique", itemsCount: 234, totalQuantity: 4_120 },
+  { listName: "Électronique", itemsCount: 234, totalQuantity: 4_120 },
   { listName: "Fournitures Bureau", itemsCount: 189, totalQuantity: 3_450 },
   { listName: "Mobilier", itemsCount: 76, totalQuantity: 890 },
 ];
@@ -24,7 +24,7 @@ export const MOCK_LISTS_OVERVIEW = [
 export const MOCK_RECENT_ITEMS = [
   {
     name: "MacBook Pro 14\"",
-    listName: "Electronique",
+    listName: "Électronique",
     quantity: 12,
     status: "AVAILABLE" as const,
     lastUpdated: "2026-03-04T10:30:00",
@@ -47,8 +47,8 @@ export const MOCK_RECENT_ITEMS = [
 
 export const MOCK_LIST_CARDS = [
   {
-    name: "Electronique",
-    description: "Appareils et accessoires electroniques",
+    name: "Électronique",
+    description: "Appareils et accessoires électroniques",
     category: "Tech",
     itemCount: 234,
     customFields: ["Texte", "Nombre"],
@@ -62,8 +62,8 @@ export const MOCK_LIST_CARDS = [
   },
   {
     name: "Mobilier",
-    description: "Meubles et equipements de bureau",
-    category: "Amenagement",
+    description: "Meubles et équipements de bureau",
+    category: "Aménagement",
     itemCount: 76,
     customFields: [],
   },
@@ -80,18 +80,18 @@ export const FEATURES: Feature[] = [
     icon: LayoutDashboard,
     title: "Tableau de bord",
     description:
-      "Vue d'ensemble de votre inventaire avec statistiques en temps reel",
+      "Vue d'ensemble de votre inventaire avec statistiques en temps réel",
   },
   {
     icon: List,
-    title: "Listes organisees",
+    title: "Listes organisées",
     description:
-      "Organisez vos articles par listes avec categories personnalisees",
+      "Organisez vos articles par listes avec catégories personnalisées",
   },
   {
     icon: Settings2,
-    title: "Champs personnalises",
-    description: "Ajoutez des champs Texte, Nombre, Date ou Oui/Non a vos listes",
+    title: "Champs personnalisés",
+    description: "Ajoutez des champs Texte, Nombre, Date ou Oui/Non à vos listes",
   },
   {
     icon: BarChart3,
@@ -103,12 +103,12 @@ export const FEATURES: Feature[] = [
     icon: Search,
     title: "Recherche et filtres",
     description:
-      "Trouvez rapidement n'importe quel article avec la recherche avancee",
+      "Trouvez rapidement n'importe quel article avec la recherche avancée",
   },
   {
     icon: Users,
     title: "Multi-utilisateurs",
     description:
-      "Comptes securises avec roles Utilisateur et Administrateur",
+      "Comptes sécurisés avec rôles Utilisateur et Administrateur",
   },
 ];

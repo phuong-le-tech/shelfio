@@ -9,6 +9,7 @@ export interface User {
   email: string;
   role: Role;
   pictureUrl?: string;
+  hasGoogleAccount: boolean;
   enabled: boolean;
   createdAt: string;
   updatedAt: string;

@@ -34,6 +34,7 @@ const AdminDashboardPage = lazy(() =>
     default: m.AdminDashboardPage,
   })),
 );
+const SettingsPage = lazy(() => import("./pages/SettingsPage"));
 const UpgradePage = lazy(() => import("./pages/UpgradePage"));
 const PaymentSuccess = lazy(() => import("./pages/PaymentSuccess"));
 const PaymentCancel = lazy(() => import("./pages/PaymentCancel"));
@@ -43,6 +44,11 @@ const PrivacyPolicy = lazy(() =>
 );
 const TermsOfService = lazy(() =>
   import("./pages/TermsOfService").then((m) => ({ default: m.TermsOfService })),
+);
+const MentionsLegales = lazy(() =>
+  import("./pages/MentionsLegales").then((m) => ({
+    default: m.MentionsLegales,
+  })),
 );
 const VerifyEmail = lazy(() =>
   import("./pages/VerifyEmail").then((m) => ({ default: m.VerifyEmail })),
@@ -70,6 +76,7 @@ export default function App() {
         <Route path="/signup" element={<SignupPage />} />
         <Route path="/privacy" element={<PrivacyPolicy />} />
         <Route path="/terms" element={<TermsOfService />} />
+        <Route path="/mentions-legales" element={<MentionsLegales />} />
         <Route path="/verify-email" element={<VerifyEmail />} />
         <Route path="/forgot-password" element={<ForgotPassword />} />
         <Route path="/reset-password" element={<ResetPassword />} />
@@ -141,6 +148,16 @@ export default function App() {
             <ProtectedRoute>
               <Layout>
                 <ItemForm />
+              </Layout>
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/settings"
+          element={
+            <ProtectedRoute>
+              <Layout>
+                <SettingsPage />
               </Layout>
             </ProtectedRoute>
           }

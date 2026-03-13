@@ -48,6 +48,11 @@ public class RateLimitConfig {
         return new ApiRateLimiter(3, 3_600_000); // 3 attempts per hour
     }
 
+    @Bean("dataExportRateLimiter")
+    public ApiRateLimiter dataExportRateLimiter() {
+        return new ApiRateLimiter(1, 3_600_000); // 1 export per hour
+    }
+
     @Bean
     public FilterRegistrationBean<ApiRateLimitFilter> apiRateLimitFilter(
             @Qualifier("apiRateLimiter") ApiRateLimiter apiRateLimiter,

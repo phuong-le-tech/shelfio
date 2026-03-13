@@ -14,6 +14,9 @@ COPY --from=build /app/dist /usr/share/nginx/html
 COPY nginx.conf.template /etc/nginx/templates/default.conf.template
 COPY docker-entrypoint.sh /docker-entrypoint.sh
 RUN chmod +x /docker-entrypoint.sh && \
-    chown -R nginx:nginx /usr/share/nginx/html
+    chown -R nginx:nginx /usr/share/nginx/html && \
+    chown -R nginx:nginx /var/cache/nginx && \
+    chown -R nginx:nginx /var/log/nginx && \
+    touch /var/run/nginx.pid && chown nginx:nginx /var/run/nginx.pid
 EXPOSE 80
 ENTRYPOINT ["/docker-entrypoint.sh"]

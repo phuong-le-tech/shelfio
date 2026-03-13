@@ -46,6 +46,15 @@ export const authApi = {
   deleteAccount: async (): Promise<void> => {
     await http.delete('/account');
   },
+
+  changePassword: async (currentPassword: string, newPassword: string): Promise<void> => {
+    await http.patch('/account/password', { currentPassword, newPassword });
+  },
+
+  exportData: async (): Promise<unknown> => {
+    const response = await http.get('/account/export');
+    return response.data;
+  },
 };
 
 export const adminApi = {

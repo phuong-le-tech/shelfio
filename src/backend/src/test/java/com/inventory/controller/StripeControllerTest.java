@@ -86,11 +86,14 @@ class StripeControllerTest {
                     .thenReturn("https://checkout.stripe.com/session/test123");
 
             mockMvc.perform(post("/api/v1/stripe/checkout")
-                            .with(user(userDetails)))
+                            .with(user(userDetails))
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content("{\"withdrawalWaiverAccepted\":true}"))
                     .andExpect(status().isOk())
                     .andExpect(jsonPath("$.data.url").value("https://checkout.stripe.com/session/test123"));
 
             verify(stripeService).createCheckoutSession(testUser);
+            verify(userRepository).save(testUser);
         }
 
         @Test
@@ -100,7 +103,9 @@ class StripeControllerTest {
                     .thenReturn(new ApiRateLimiter.RateLimitResult(false, 0));
 
             mockMvc.perform(post("/api/v1/stripe/checkout")
-                            .with(user(userDetails)))
+                            .with(user(userDetails))
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content("{\"withdrawalWaiverAccepted\":true}"))
                     .andExpect(status().isTooManyRequests())
                     .andExpect(jsonPath("$.error.code").value(429))
                     .andExpect(jsonPath("$.error.message").value("Too many checkout requests. Please try again later."));
@@ -117,7 +122,9 @@ class StripeControllerTest {
             when(userRepository.findById(userId)).thenReturn(Optional.of(testUser));
 
             mockMvc.perform(post("/api/v1/stripe/checkout")
-                            .with(user(adminDetails)))
+                            .with(user(adminDetails))
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content("{\"withdrawalWaiverAccepted\":true}"))
                     .andExpect(status().isForbidden())
                     .andExpect(jsonPath("$.data.error").value("Admin accounts cannot purchase premium"));
         }
@@ -133,7 +140,9 @@ class StripeControllerTest {
             when(userRepository.findById(userId)).thenReturn(Optional.of(testUser));
 
             mockMvc.perform(post("/api/v1/stripe/checkout")
-                            .with(user(premiumDetails)))
+                            .with(user(premiumDetails))
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content("{\"withdrawalWaiverAccepted\":true}"))
                     .andExpect(status().isBadRequest())
                     .andExpect(jsonPath("$.data.error").value("Already a premium user"));
         }
@@ -146,7 +155,9 @@ class StripeControllerTest {
             when(userRepository.findById(userId)).thenReturn(Optional.empty());
 
             mockMvc.perform(post("/api/v1/stripe/checkout")
-                            .with(user(userDetails)))
+                            .with(user(userDetails))
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content("{\"withdrawalWaiverAccepted\":true}"))
                     .andExpect(status().isNotFound())
                     .andExpect(jsonPath("$.error.code").value(404));
         }

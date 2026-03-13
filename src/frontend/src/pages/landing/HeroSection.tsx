@@ -41,7 +41,7 @@ const LIST_COLORS = ["bg-blue-500", "bg-emerald-500", "bg-amber-500"];
 const TRUST_BADGES = [
   { icon: Zap, label: "Gratuit" },
   { icon: CreditCard, label: "Pas de carte requise" },
-  { icon: Shield, label: "Donnees securisees" },
+  { icon: Shield, label: "Données sécurisées" },
 ];
 
 const statCards = [
@@ -52,21 +52,21 @@ const statCards = [
     icon: Package,
   },
   {
-    label: "Quantite totale",
+    label: "Quantité totale",
     value: MOCK_STATS.totalQuantity.toLocaleString("fr-FR"),
-    subtext: "Unites en inventaire",
+    subtext: "Unités en inventaire",
     icon: Inbox,
   },
   {
-    label: "A verifier",
+    label: "À vérifier",
     value: MOCK_STATS.toVerifyCount,
-    subtext: "Articles a controler",
+    subtext: "Articles à contrôler",
     icon: AlertTriangle,
   },
   {
     label: "Attention requise",
     value: MOCK_STATS.needsAttentionCount,
-    subtext: "Maintenance ou endommage",
+    subtext: "Maintenance ou endommagé",
     icon: XCircle,
   },
 ];
@@ -86,7 +86,7 @@ export function HeroSection() {
         <div className="text-center">
           <BlurFade delay={0.1} duration={0.6}>
             <p className="text-sm font-medium text-brand tracking-widest uppercase mb-6">
-              Gestion d'inventaire simplifiee
+              Gestion d'inventaire simplifiée
             </p>
           </BlurFade>
           <BlurFade delay={0.2} duration={0.6}>
@@ -94,14 +94,14 @@ export function HeroSection() {
               id="hero-heading"
               className="font-display text-4xl md:text-5xl lg:text-6xl xl:text-7xl font-bold tracking-tight max-w-4xl mx-auto leading-[1.1]"
             >
-              Gerez votre inventaire{" "}
-              <span className="text-brand">en toute simplicite</span>
+              Gérez votre inventaire{" "}
+              <span className="text-brand">en toute simplicité</span>
             </h1>
           </BlurFade>
           <BlurFade delay={0.3} duration={0.6}>
             <p className="text-lg md:text-xl text-muted-foreground mt-6 max-w-2xl mx-auto leading-relaxed">
               Organisez vos articles, suivez vos niveaux de stock et gardez le
-              controle de votre inventaire avec un tableau de bord intuitif.
+              contrôle de votre inventaire avec un tableau de bord intuitif.
             </p>
           </BlurFade>
           <BlurFade delay={0.4} duration={0.6}>
@@ -178,7 +178,7 @@ export function HeroSection() {
 
                 <div>
                   <h3 className="text-sm font-semibold text-foreground mb-3">
-                    Apercu des listes
+                    Aperçu des listes
                   </h3>
                   <div className="grid grid-cols-1 md:grid-cols-3 gap-3 md:gap-4">
                     {MOCK_LISTS_OVERVIEW.map((list, idx) => (
@@ -206,7 +206,7 @@ export function HeroSection() {
                           </div>
                           <div className="flex justify-between items-center text-sm">
                             <span className="text-muted-foreground">
-                              Quantite :
+                              Quantité :
                             </span>
                             <span className="font-medium">
                               {list.totalQuantity.toLocaleString("fr-FR")}
@@ -220,7 +220,7 @@ export function HeroSection() {
 
                 <div className="hidden md:block">
                   <h3 className="text-sm font-semibold text-foreground mb-3">
-                    Recemment modifies
+                    Récemment modifiés
                   </h3>
                   <div className="rounded-xl border bg-background/50 overflow-hidden">
                     <table className="w-full text-sm text-left">
@@ -233,13 +233,13 @@ export function HeroSection() {
                             Liste
                           </th>
                           <th scope="col" className="px-5 py-3 font-medium">
-                            Quantite
+                            Quantité
                           </th>
                           <th scope="col" className="px-5 py-3 font-medium">
                             Statut
                           </th>
                           <th scope="col" className="px-5 py-3 font-medium">
-                            Derniere modification
+                            Dernière modification
                           </th>
                         </tr>
                       </thead>
@@ -310,13 +310,13 @@ export function CTASection() {
             id="cta-heading"
             className="font-display text-3xl md:text-4xl font-semibold tracking-tight mb-4"
           >
-            Pret a organiser votre inventaire ?
+            Prêt à organiser votre inventaire ?
           </h2>
         </BlurFade>
         <BlurFade delay={0.2} inView>
           <p className="text-muted-foreground text-lg max-w-xl mx-auto mb-8">
-            Creez votre compte gratuitement et commencez a gerer votre inventaire
-            des aujourd'hui.
+            Créez votre compte gratuitement et commencez à gérer votre inventaire
+            dès aujourd'hui.
           </p>
         </BlurFade>
         <BlurFade delay={0.3} inView>
@@ -335,7 +335,7 @@ export function CTASection() {
               to="/login"
               className="text-sm text-muted-foreground hover:text-foreground transition-colors"
             >
-              Deja un compte ? Se connecter
+              Déjà un compte ? Se connecter
             </Link>
           </div>
         </BlurFade>

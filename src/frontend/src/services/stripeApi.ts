@@ -1,13 +1,12 @@
 import http from './http';
 
-export const stripeApi = {
-  createCheckoutSession: async (): Promise<{ url: string }> => {
-    const response = await http.post('/stripe/checkout');
-    return response.data;
-  },
+interface CheckoutRequest {
+  withdrawalWaiverAccepted: boolean;
+}
 
-  getPaymentStatus: async (): Promise<{ premium: boolean }> => {
-    const response = await http.get('/stripe/status');
+export const stripeApi = {
+  createCheckoutSession: async (data: CheckoutRequest): Promise<{ url: string }> => {
+    const response = await http.post('/stripe/checkout', data);
     return response.data;
   },
 };

@@ -5,7 +5,7 @@ import { motion } from 'motion/react';
 import { useQuery } from '@tanstack/react-query';
 import { adminApi } from '../../services/authApi';
 import { queryKeys } from '../../lib/queryKeys';
-import { ItemStatus, STATUS_OPTIONS, STATUS_LABELS, formatStatus } from '../../types/item';
+import { ItemStatus, STATUS_OPTIONS, STATUS_LABELS, STATUS_BADGE_VARIANTS, formatStatus } from '../../types/item';
 import { Button } from '@/components/ui/button';
 import { Pagination } from '@/components/Pagination';
 import { Badge } from '@/components/ui/badge';
@@ -17,13 +17,6 @@ import { cn } from '@/lib/utils';
 import { sanitizeImageUrl } from '../../utils/imageUtils';
 
 const ITEMS_PER_PAGE = 20;
-
-const statusToBadgeVariant: Record<ItemStatus, 'success' | 'warning' | 'error' | 'default'> = {
-  AVAILABLE: 'success',
-  TO_VERIFY: 'warning',
-  NEEDS_MAINTENANCE: 'default',
-  DAMAGED: 'error',
-};
 
 export function AdminListDetailPage() {
   const { id } = useParams();
@@ -235,7 +228,7 @@ export function AdminListDetailPage() {
                       </div>
                     </TableCell>
                     <TableCell>
-                      <Badge variant={statusToBadgeVariant[item.status]}>
+                      <Badge variant={STATUS_BADGE_VARIANTS[item.status]}>
                         {formatStatus(item.status)}
                       </Badge>
                     </TableCell>

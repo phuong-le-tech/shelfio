@@ -9,6 +9,7 @@ import jakarta.validation.constraints.Size;
 public record SignupRequest(
     @NotBlank(message = "Email is required")
     @Email(message = "Invalid email format")
+    @Size(max = 255, message = "Email must not exceed 255 characters")
     String email,
 
     @NotBlank(message = "Password is required")
@@ -20,6 +21,7 @@ public record SignupRequest(
     String password,
 
     @NotBlank(message = "Password confirmation is required")
+    @Size(max = 128, message = "Password confirmation must not exceed 128 characters")
     String confirmPassword
 ) {
     @AssertTrue(message = "Passwords do not match")
