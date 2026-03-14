@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { useNavigate, useLocation, useSearchParams, Link } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { AlertCircle, CheckCircle } from 'lucide-react';
+import { AlertCircle, CheckCircle, Eye, EyeOff } from 'lucide-react';
 import { motion } from 'motion/react';
 import { useAuth } from '../contexts/AuthContext';
 import { loginSchema, LoginFormData } from '../schemas/auth.schemas';
@@ -17,6 +17,7 @@ import { BlurFade } from '@/components/effects/blur-fade';
 export function LoginPage() {
   const [serverError, setServerError] = useState('');
   const [loading, setLoading] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
 
   const [isUnverified, setIsUnverified] = useState(false);
 
@@ -147,15 +148,25 @@ export function LoginPage() {
                     Mot de passe oublié ?
                   </Link>
                 </div>
-                <Input
-                  id="password"
-                  type="password"
-                  {...register('password')}
-                  className={errors.password ? 'border-destructive focus-visible:ring-destructive' : ''}
-                  placeholder="Entrez votre mot de passe"
-                  aria-invalid={!!errors.password}
-                  aria-describedby={errors.password ? 'password-error' : undefined}
-                />
+                <div className="relative">
+                  <Input
+                    id="password"
+                    type={showPassword ? 'text' : 'password'}
+                    {...register('password')}
+                    className={errors.password ? 'border-destructive focus-visible:ring-destructive pr-10' : 'pr-10'}
+                    placeholder="Entrez votre mot de passe"
+                    aria-invalid={!!errors.password}
+                    aria-describedby={errors.password ? 'password-error' : undefined}
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword(!showPassword)}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                    aria-label={showPassword ? 'Masquer le mot de passe' : 'Afficher le mot de passe'}
+                  >
+                    {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                  </button>
+                </div>
                 {errors.password && (
                   <p id="password-error" role="alert" className="text-sm text-destructive flex items-center gap-1.5">
                     <AlertCircle className="h-4 w-4 flex-shrink-0" />

@@ -8,10 +8,17 @@ import { ErrorBoundary } from "./components/ErrorBoundary";
 import { ToastProvider } from "./components/Toast";
 import { AuthProvider } from "./contexts/AuthContext";
 import { queryClient } from "./lib/queryClient";
-import { initSentryIfConsented } from "./components/CookieConsent";
+import * as Sentry from "@sentry/react";
 import "./index.css";
 
-initSentryIfConsented();
+const sentryDsn = import.meta.env.VITE_SENTRY_DSN;
+if (sentryDsn) {
+  Sentry.init({
+    dsn: sentryDsn,
+    integrations: [Sentry.browserTracingIntegration()],
+    tracesSampleRate: 0.1,
+  });
+}
 
 const googleClientId = import.meta.env.VITE_GOOGLE_CLIENT_ID || "";
 

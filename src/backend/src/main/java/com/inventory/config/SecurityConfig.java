@@ -100,8 +100,9 @@ public class SecurityConfig {
                     .maxAgeInSeconds(31536000))
                 // CSP 'unsafe-inline' for style-src is required by TailwindCSS — accepted risk
                 // font-src and style-src allow api.fontshare.com for external fonts
+                // script-src and style-src allow cdn-cookieyes.com for CookieYes consent banner
                 .contentSecurityPolicy(csp -> csp
-                    .policyDirectives("default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline' https://api.fontshare.com; img-src 'self' data: blob:; font-src 'self' https://api.fontshare.com; connect-src 'self'; frame-ancestors 'none'"))
+                    .policyDirectives("default-src 'self'; script-src 'self' https://cdn-cookieyes.com; style-src 'self' 'unsafe-inline' https://api.fontshare.com https://cdn-cookieyes.com; img-src 'self' data: blob: https://cdn-cookieyes.com; font-src 'self' https://api.fontshare.com; connect-src 'self' https://cdn-cookieyes.com; frame-ancestors 'none'"))
                 .referrerPolicy(referrer -> referrer
                     .policy(ReferrerPolicyHeaderWriter.ReferrerPolicy.STRICT_ORIGIN_WHEN_CROSS_ORIGIN))
                 .permissionsPolicyHeader(pp -> pp

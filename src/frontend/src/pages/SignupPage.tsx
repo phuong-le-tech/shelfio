@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { AlertCircle } from 'lucide-react';
+import { AlertCircle, Check, Eye, EyeOff, X } from 'lucide-react';
 import { motion } from 'motion/react';
 import { signupSchema, SignupFormData } from '../schemas/auth.schemas';
 import { getApiErrorMessage } from '../utils/errorUtils';
@@ -17,14 +17,19 @@ import { BlurFade } from '@/components/effects/blur-fade';
 export function SignupPage() {
   const [serverError, setServerError] = useState('');
   const [loading, setLoading] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
   const navigate = useNavigate();
 
   const {
     register,
     handleSubmit,
+    watch,
     formState: { errors },
   } = useForm<SignupFormData>({ resolver: zodResolver(signupSchema) });
+
+  const password = watch('password', '');
 
   const onSubmit = async (data: SignupFormData) => {
     setServerError('');
@@ -108,34 +113,66 @@ export function SignupPage() {
 
               <div className="space-y-2">
                 <Label htmlFor="password">Mot de passe</Label>
-                <Input
-                  id="password"
-                  type="password"
-                  {...register('password')}
-                  className={errors.password ? 'border-destructive focus-visible:ring-destructive' : ''}
-                  placeholder="Minimum 12 caractères"
-                  aria-invalid={!!errors.password}
-                  aria-describedby={errors.password ? 'password-error' : undefined}
-                />
-                {errors.password && (
-                  <p id="password-error" role="alert" className="text-sm text-destructive flex items-center gap-1.5">
-                    <AlertCircle className="h-4 w-4 flex-shrink-0" />
-                    {errors.password.message}
-                  </p>
-                )}
+                <div className="relative">
+                  <Input
+                    id="password"
+                    type={showPassword ? 'text' : 'password'}
+                    {...register('password')}
+                    className={errors.password ? 'border-destructive focus-visible:ring-destructive pr-10' : 'pr-10'}
+                    placeholder="Minimum 12 caractères"
+                    aria-invalid={!!errors.password}
+                    aria-describedby={errors.password ? 'password-error' : undefined}
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword(!showPassword)}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                    aria-label={showPassword ? 'Masquer le mot de passe' : 'Afficher le mot de passe'}
+                  >
+                    {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                  </button>
+                </div>
+                <ul className="space-y-1 text-xs" aria-label="Exigences du mot de passe">
+                  {[
+                    { test: password.length >= 12, label: '12 caractères minimum' },
+                    { test: /[a-z]/.test(password), label: 'Une lettre minuscule' },
+                    { test: /[A-Z]/.test(password), label: 'Une lettre majuscule' },
+                    { test: /[0-9]/.test(password), label: 'Un chiffre' },
+                    { test: /[!@#$%^&*()_+\-=[\]{};':"\\|,.<>/?~`]/.test(password), label: 'Un caractère spécial (!@#$%...)' },
+                  ].map(({ test, label }) => (
+                    <li key={label} className={`flex items-center gap-1.5 ${password ? (test ? 'text-green-600 dark:text-green-400' : 'text-destructive') : 'text-muted-foreground'}`}>
+                      {password ? (
+                        test ? <Check className="h-3.5 w-3.5 flex-shrink-0" /> : <X className="h-3.5 w-3.5 flex-shrink-0" />
+                      ) : (
+                        <span className="h-3.5 w-3.5 flex-shrink-0 flex items-center justify-center">&#8226;</span>
+                      )}
+                      {label}
+                    </li>
+                  ))}
+                </ul>
               </div>
 
               <div className="space-y-2">
                 <Label htmlFor="confirmPassword">Confirmer le mot de passe</Label>
-                <Input
-                  id="confirmPassword"
-                  type="password"
-                  {...register('confirmPassword')}
-                  className={errors.confirmPassword ? 'border-destructive focus-visible:ring-destructive' : ''}
-                  placeholder="Confirmez votre mot de passe"
-                  aria-invalid={!!errors.confirmPassword}
-                  aria-describedby={errors.confirmPassword ? 'confirmPassword-error' : undefined}
-                />
+                <div className="relative">
+                  <Input
+                    id="confirmPassword"
+                    type={showConfirmPassword ? 'text' : 'password'}
+                    {...register('confirmPassword')}
+                    className={errors.confirmPassword ? 'border-destructive focus-visible:ring-destructive pr-10' : 'pr-10'}
+                    placeholder="Confirmez votre mot de passe"
+                    aria-invalid={!!errors.confirmPassword}
+                    aria-describedby={errors.confirmPassword ? 'confirmPassword-error' : undefined}
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                    aria-label={showConfirmPassword ? 'Masquer le mot de passe' : 'Afficher le mot de passe'}
+                  >
+                    {showConfirmPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                  </button>
+                </div>
                 {errors.confirmPassword && (
                   <p id="confirmPassword-error" role="alert" className="text-sm text-destructive flex items-center gap-1.5">
                     <AlertCircle className="h-4 w-4 flex-shrink-0" />

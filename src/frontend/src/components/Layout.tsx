@@ -3,7 +3,6 @@ import { Link, useLocation } from 'react-router-dom';
 import { LayoutDashboard, List, Package, Menu, X, Shield, Layers, BarChart3, Settings } from 'lucide-react';
 import FocusTrap from 'focus-trap-react';
 import { UserMenu } from './UserMenu';
-import { CookieConsent } from './CookieConsent';
 import { useAuth } from '../contexts/AuthContext';
 import { cn } from '@/lib/utils';
 
@@ -145,7 +144,6 @@ export default function Layout({ children }: LayoutProps) {
           </nav>
         </footer>
       </div>
-      <CookieConsent />
     </div>
   );
 }
