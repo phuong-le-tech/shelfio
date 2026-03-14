@@ -20,7 +20,7 @@ jobs:
       matrix:
         include:
           - language: java-kotlin
-            build-mode: autobuild
+            build-mode: manual
           - language: javascript-typescript
             build-mode: none
 
@@ -39,6 +39,11 @@ jobs:
         with:
           languages: ${{ matrix.language }}
           build-mode: ${{ matrix.build-mode }}
+
+      - name: Build Java
+        if: matrix.language == 'java-kotlin'
+        run: ./mvnw compile -DskipTests -q
+        working-directory: src/backend
 
       - name: Perform CodeQL Analysis
         uses: github/codeql-action/analyze@v3
