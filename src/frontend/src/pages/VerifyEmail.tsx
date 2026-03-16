@@ -5,8 +5,6 @@ import { Mail, CheckCircle, XCircle, Loader2 } from 'lucide-react';
 import { authApi } from '../services/authApi';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { DotPattern } from '@/components/effects/dot-pattern';
-import { BlurFade } from '@/components/effects/blur-fade';
 import { getApiErrorMessage } from '@/utils/errorUtils';
 
 type Status = 'pending' | 'verifying' | 'success' | 'error';
@@ -46,44 +44,67 @@ export function VerifyEmail() {
     }
   };
 
-  return (
-    <div className="min-h-screen flex relative overflow-hidden bg-background">
-      {/* Left side - decorative */}
-      <div className="hidden lg:flex lg:w-[45%] relative items-center justify-center overflow-hidden">
-        <DotPattern className="opacity-40" width={20} height={20} cr={1} />
-        <BlurFade delay={0.1} duration={0.8} blur="20px">
-          <h1 className="font-display text-[8rem] xl:text-[10rem] font-bold text-foreground/[0.04] select-none leading-none -rotate-3">
-            Inven
-            <br />
-            tory
-          </h1>
-        </BlurFade>
-      </div>
+  const resendSection = (
+    <div className="rounded-xl bg-card p-5 text-left mt-6">
+      <p className="text-sm text-muted-foreground mb-3">
+        {status === 'pending'
+          ? "Vous n'avez pas reçu l'email ? Entrez votre adresse pour le renvoyer :"
+          : 'Entrez votre email pour recevoir un nouveau lien de vérification :'}
+      </p>
+      {resendSent ? (
+        <p className="text-sm text-green-600 dark:text-green-400">
+          Si un compte existe avec cet email, un nouveau lien de vérification a été envoyé.
+        </p>
+      ) : (
+        <div className="flex gap-2">
+          <Input
+            type="email"
+            placeholder="vous@exemple.com"
+            value={resendEmail}
+            onChange={(e) => setResendEmail(e.target.value)}
+            className="rounded-xl bg-card border border-border"
+          />
+          <Button
+            onClick={handleResend}
+            disabled={resendLoading || !resendEmail}
+            className="rounded-xl text-[13px] font-medium shrink-0"
+          >
+            {resendLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Renvoyer'}
+          </Button>
+        </div>
+      )}
+    </div>
+  );
 
-      {/* Right side - content */}
-      <div className="flex-1 flex items-center justify-center px-6 lg:px-16">
-        <motion.div
-          initial={{ opacity: 0, x: 30 }}
-          animate={{ opacity: 1, x: 0 }}
-          transition={{ duration: 0.5, ease: [0.4, 0, 0.2, 1] }}
-          className="w-full max-w-md"
-        >
+  return (
+    <div className="min-h-screen flex items-center justify-center bg-background px-4">
+      <motion.div
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.4, ease: [0.4, 0, 0.2, 1] }}
+        className="w-full max-w-[420px]"
+      >
+        <div className="rounded-[20px] border p-10">
           {status === 'verifying' && (
             <div className="text-center">
-              <Loader2 className="h-12 w-12 animate-spin text-muted-foreground mx-auto mb-4" />
-              <h2 className="font-display text-2xl font-semibold mb-2">Vérification en cours...</h2>
-              <p className="text-muted-foreground">Veuillez patienter pendant que nous vérifions votre email.</p>
+              <div className="w-14 h-14 rounded-2xl bg-brand/10 flex items-center justify-center mx-auto mb-4">
+                <Loader2 className="h-7 w-7 animate-spin text-brand" />
+              </div>
+              <h2 className="font-display text-[24px] font-bold tracking-tight mb-2">Vérification en cours...</h2>
+              <p className="text-sm text-muted-foreground">Veuillez patienter pendant que nous vérifions votre email.</p>
             </div>
           )}
 
           {status === 'success' && (
             <div className="text-center">
-              <CheckCircle className="h-12 w-12 text-green-500 mx-auto mb-4" />
-              <h2 className="font-display text-2xl font-semibold mb-2">Email vérifié !</h2>
-              <p className="text-muted-foreground mb-6">
+              <div className="w-14 h-14 rounded-2xl bg-green-50 dark:bg-green-900/20 flex items-center justify-center mx-auto mb-4">
+                <CheckCircle className="h-7 w-7 text-green-600 dark:text-green-400" />
+              </div>
+              <h2 className="font-display text-[24px] font-bold tracking-tight mb-2">Email vérifié !</h2>
+              <p className="text-sm text-muted-foreground mb-6">
                 Votre adresse email a été vérifiée avec succès. Vous pouvez maintenant vous connecter.
               </p>
-              <Button asChild className="w-full h-11" size="lg">
+              <Button asChild className="w-full rounded-xl h-[46px] text-[15px] font-semibold">
                 <Link to="/login?verified=true">Se connecter</Link>
               </Button>
             </div>
@@ -91,77 +112,37 @@ export function VerifyEmail() {
 
           {status === 'error' && (
             <div className="text-center">
-              <XCircle className="h-12 w-12 text-destructive mx-auto mb-4" />
-              <h2 className="font-display text-2xl font-semibold mb-2">Échec de la vérification</h2>
-              <p className="text-muted-foreground mb-6">{error}</p>
-              <div className="rounded-2xl border bg-card p-6 shadow-float text-left">
-                <p className="text-sm text-muted-foreground mb-4">
-                  Entrez votre email pour recevoir un nouveau lien de vérification :
-                </p>
-                {resendSent ? (
-                  <p className="text-sm text-green-600">
-                    Si un compte existe avec cet email, un nouveau lien de vérification a été envoyé.
-                  </p>
-                ) : (
-                  <div className="flex gap-2">
-                    <Input
-                      type="email"
-                      placeholder="vous@exemple.com"
-                      value={resendEmail}
-                      onChange={(e) => setResendEmail(e.target.value)}
-                    />
-                    <Button onClick={handleResend} disabled={resendLoading || !resendEmail}>
-                      {resendLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Renvoyer'}
-                    </Button>
-                  </div>
-                )}
+              <div className="w-14 h-14 rounded-2xl bg-destructive/10 flex items-center justify-center mx-auto mb-4">
+                <XCircle className="h-7 w-7 text-destructive" />
               </div>
-              <p className="mt-4 text-sm text-muted-foreground">
-                <Link to="/login" className="text-foreground font-medium hover:underline">
-                  Retour à la connexion
-                </Link>
-              </p>
+              <h2 className="font-display text-[24px] font-bold tracking-tight mb-2">Échec de la vérification</h2>
+              <p className="text-sm text-muted-foreground">{error}</p>
+              {resendSection}
             </div>
           )}
 
           {status === 'pending' && (
             <div className="text-center">
-              <Mail className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-              <h2 className="font-display text-2xl font-semibold mb-2">Vérifiez votre email</h2>
-              <p className="text-muted-foreground mb-6">
+              <div className="w-14 h-14 rounded-2xl bg-brand/10 flex items-center justify-center mx-auto mb-4">
+                <Mail className="h-7 w-7 text-brand" />
+              </div>
+              <h2 className="font-display text-[24px] font-bold tracking-tight mb-2">Vérifiez votre email</h2>
+              <p className="text-sm text-muted-foreground">
                 Un email de vérification a été envoyé à votre adresse. Cliquez sur le lien dans l'email pour activer votre compte.
               </p>
-              <div className="rounded-2xl border bg-card p-6 shadow-float">
-                <p className="text-sm text-muted-foreground mb-4">
-                  Vous n'avez pas reçu l'email ? Entrez votre adresse pour le renvoyer :
-                </p>
-                {resendSent ? (
-                  <p className="text-sm text-green-600">
-                    Si un compte existe avec cet email, un nouveau lien de vérification a été envoyé.
-                  </p>
-                ) : (
-                  <div className="flex gap-2">
-                    <Input
-                      type="email"
-                      placeholder="vous@exemple.com"
-                      value={resendEmail}
-                      onChange={(e) => setResendEmail(e.target.value)}
-                    />
-                    <Button onClick={handleResend} disabled={resendLoading || !resendEmail}>
-                      {resendLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Renvoyer'}
-                    </Button>
-                  </div>
-                )}
-              </div>
-              <p className="mt-4 text-sm text-muted-foreground">
-                <Link to="/login" className="text-foreground font-medium hover:underline">
-                  Retour à la connexion
-                </Link>
-              </p>
+              {resendSection}
             </div>
           )}
-        </motion.div>
-      </div>
+
+          {(status === 'error' || status === 'pending') && (
+            <p className="mt-7 text-center text-sm text-muted-foreground">
+              <Link to="/login" className="text-brand font-semibold hover:opacity-80 transition-opacity">
+                ← Retour à la connexion
+              </Link>
+            </p>
+          )}
+        </div>
+      </motion.div>
     </div>
   );
 }

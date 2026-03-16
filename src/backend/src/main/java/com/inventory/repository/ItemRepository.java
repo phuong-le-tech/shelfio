@@ -48,4 +48,8 @@ public interface ItemRepository extends JpaRepository<Item, UUID>, JpaSpecificat
     @Query("SELECT i.itemList.user.email, COUNT(i) FROM Item i GROUP BY i.itemList.user.email ORDER BY COUNT(i) DESC LIMIT 5")
     List<Object[]> findTopUsersByItemCount();
 
+    long countByItemListId(UUID itemListId);
+
+    List<Item> findAllByItemListIdOrderByCreatedAtAsc(UUID itemListId);
+
 }

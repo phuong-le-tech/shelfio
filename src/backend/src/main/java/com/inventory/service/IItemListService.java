@@ -1,6 +1,7 @@
 package com.inventory.service;
 
 import com.inventory.dto.request.ItemListRequest;
+import com.inventory.dto.response.CsvExportResult;
 import com.inventory.model.ItemList;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -19,4 +20,6 @@ public interface IItemListService {
     ItemList updateList(@NonNull UUID id, @NonNull ItemListRequest request);
 
     void deleteList(@NonNull UUID id);
+
+    CsvExportResult exportListAsCsv(@NonNull UUID id);
 }

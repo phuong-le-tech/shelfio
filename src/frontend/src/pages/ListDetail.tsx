@@ -8,6 +8,7 @@ import {
   Package,
   List,
   MoreHorizontal,
+  Download,
 } from "lucide-react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { listsApi, itemsApi } from "../services/api";
@@ -21,6 +22,7 @@ import {
 } from "../types/item";
 import { SkeletonCard, SkeletonText } from "../components/Skeleton";
 import { useToast } from "../components/Toast";
+import { getApiErrorMessage } from "../utils/errorUtils";
 import ConfirmModal from "../components/ConfirmModal";
 import { Button } from "@/components/ui/button";
 import { Pagination } from "@/components/Pagination";
@@ -52,6 +54,7 @@ export default function ListDetail() {
   const [pendingDeleteId, setPendingDeleteId] = useState<string | null>(null);
   const [statusFilter, setStatusFilter] = useState<ItemStatus | "">("");
   const [itemPage, setItemPage] = useState(0);
+  const [isExporting, setIsExporting] = useState(false);
 
   const { data: list, isLoading: listLoading, error: listError } = useQuery({
     queryKey: queryKeys.lists.detail(id!),
@@ -108,6 +111,28 @@ export default function ListDetail() {
     const itemId = pendingDeleteId;
     setPendingDeleteId(null);
     deleteMutation.mutate(itemId);
+  };
+
+  const handleExportCsv = async () => {
+    if (!id) return;
+    setIsExporting(true);
+    try {
+      const { blob, filename } = await listsApi.exportCsv(id);
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = filename;
+      a.click();
+      setTimeout(() => URL.revokeObjectURL(url), 1000);
+      showToast("Export CSV téléchargé", "success");
+    } catch (err: unknown) {
+      showToast(
+        getApiErrorMessage(err, "Erreur lors de l'export CSV"),
+        "error"
+      );
+    } finally {
+      setIsExporting(false);
+    }
   };
 
   if (listLoading) {
@@ -183,6 +208,14 @@ export default function ListDetail() {
                 <Pencil className="h-4 w-4 mr-1.5" />
                 Modifier
               </Link>
+            </Button>
+            <Button
+              variant="outline"
+              onClick={handleExportCsv}
+              disabled={isExporting}
+            >
+              <Download className="h-4 w-4 mr-1.5" />
+              {isExporting ? "Export..." : "Exporter CSV"}
             </Button>
             <Button asChild>
               <Link to={`/lists/${id}/items/new`}>

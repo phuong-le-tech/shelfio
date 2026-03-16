@@ -3,6 +3,8 @@ package com.inventory.controller;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.inventory.config.TestSecurityConfig;
 import com.inventory.dto.request.ItemListRequest;
+import com.inventory.dto.response.CsvExportResult;
+import com.inventory.exception.ExportLimitExceededException;
 import com.inventory.exception.ItemListNotFoundException;
 import com.inventory.model.ItemList;
 import com.inventory.security.CustomUserDetails;
@@ -24,6 +26,7 @@ import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 
+import java.nio.charset.StandardCharsets;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.UUID;
@@ -435,6 +438,58 @@ class ItemListControllerTest {
                     .andExpect(status().isNotFound())
                     .andExpect(jsonPath("$.error.code").value(404))
                     .andExpect(jsonPath("$.error.message").value("Item list not found with id: " + nonExistingId));
+        }
+    }
+
+    @Nested
+    @DisplayName("GET /api/v1/lists/{id}/export")
+    class ExportListTests {
+
+        @Test
+        @DisplayName("should return CSV with correct headers")
+        void exportList_existingId_returnsCsvWithHeaders() throws Exception {
+            byte[] csvContent = "\uFEFFName,Status,Stock\r\n".getBytes(StandardCharsets.UTF_8);
+            CsvExportResult csvResult = new CsvExportResult(csvContent, "Test_List_2026-03-14.csv");
+            when(itemListService.exportListAsCsv(testListId)).thenReturn(csvResult);
+
+            mockMvc.perform(get("/api/v1/lists/{id}/export", testListId)
+                            .with(user(userDetails)))
+                    .andExpect(status().isOk())
+                    .andExpect(header().string("Content-Type", "text/csv;charset=UTF-8"))
+                    .andExpect(header().string("Content-Disposition",
+                            org.hamcrest.Matchers.containsString("attachment")))
+                    .andExpect(header().string("Content-Disposition",
+                            org.hamcrest.Matchers.containsString("Test_List_2026-03-14.csv")))
+                    .andExpect(header().longValue("Content-Length", csvContent.length))
+                    .andExpect(header().string("Cache-Control", "no-store, no-cache, must-revalidate"))
+                    .andExpect(header().string("Pragma", "no-cache"))
+                    .andExpect(content().bytes(csvContent));
+        }
+
+        @Test
+        @DisplayName("should return 400 when export exceeds item limit")
+        void exportList_exceedsLimit_returns400() throws Exception {
+            when(itemListService.exportListAsCsv(testListId))
+                    .thenThrow(new ExportLimitExceededException("Cannot export more than 10000 items. Please reduce the list size."));
+
+            mockMvc.perform(get("/api/v1/lists/{id}/export", testListId)
+                            .with(user(userDetails)))
+                    .andExpect(status().isBadRequest())
+                    .andExpect(jsonPath("$.error.code").value(400))
+                    .andExpect(jsonPath("$.error.message").value("Cannot export more than 10000 items. Please reduce the list size."));
+        }
+
+        @Test
+        @DisplayName("should return 404 when list not found")
+        void exportList_nonExistingId_returns404() throws Exception {
+            UUID nonExistingId = UUID.randomUUID();
+            when(itemListService.exportListAsCsv(nonExistingId))
+                    .thenThrow(new ItemListNotFoundException(nonExistingId));
+
+            mockMvc.perform(get("/api/v1/lists/{id}/export", nonExistingId)
+                            .with(user(userDetails)))
+                    .andExpect(status().isNotFound())
+                    .andExpect(jsonPath("$.error.code").value(404));
         }
     }
 }

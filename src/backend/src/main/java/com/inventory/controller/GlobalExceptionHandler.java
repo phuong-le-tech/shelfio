@@ -3,6 +3,7 @@ package com.inventory.controller;
 import com.inventory.dto.response.ApiErrorResponse;
 import com.inventory.exception.AccountNotVerifiedException;
 import com.inventory.exception.CustomFieldValidationException;
+import com.inventory.exception.ExportLimitExceededException;
 import jakarta.validation.ConstraintViolationException;
 import com.inventory.exception.FileValidationException;
 import com.inventory.exception.ImageProcessingException;
@@ -116,6 +117,11 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(ListLimitExceededException.class)
     public ResponseEntity<ApiErrorResponse> handleListLimitExceeded(ListLimitExceededException e) {
         return buildErrorResponse(HttpStatus.FORBIDDEN, e.getMessage());
+    }
+
+    @ExceptionHandler(ExportLimitExceededException.class)
+    public ResponseEntity<ApiErrorResponse> handleExportLimitExceeded(ExportLimitExceededException e) {
+        return buildErrorResponse(HttpStatus.BAD_REQUEST, e.getMessage());
     }
 
     @ExceptionHandler(RateLimitExceededException.class)

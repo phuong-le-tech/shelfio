@@ -5,34 +5,39 @@
 @layer base {
   :root {
     --background: 0 0% 100%;
-    --foreground: 0 0% 3.9%;
+    --foreground: 0 0% 10%;
 
-    --card: 0 0% 100%;
-    --card-foreground: 0 0% 3.9%;
+    --card: 210 13% 97%;
+    --card-foreground: 0 0% 10%;
 
     --popover: 0 0% 100%;
-    --popover-foreground: 0 0% 3.9%;
+    --popover-foreground: 0 0% 10%;
 
-    --primary: 0 0% 9%;
-    --primary-foreground: 0 0% 98%;
+    --primary: 0 0% 10%;
+    --primary-foreground: 0 0% 100%;
 
-    --secondary: 0 0% 96.1%;
-    --secondary-foreground: 0 0% 9%;
+    --secondary: 210 13% 97%;
+    --secondary-foreground: 0 0% 10%;
 
-    --muted: 0 0% 96.1%;
-    --muted-foreground: 0 0% 45.1%;
+    --muted: 220 9% 94%;
+    --muted-foreground: 220 9% 46%;
 
-    --accent: 161 94% 30%;
-    --accent-foreground: 0 0% 98%;
+    --accent: 0 100% 71%;
+    --accent-foreground: 0 0% 100%;
 
-    --destructive: 0 84.2% 60.2%;
-    --destructive-foreground: 0 0% 98%;
+    --destructive: 0 84% 60%;
+    --destructive-foreground: 0 0% 100%;
 
-    --border: 0 0% 89.8%;
-    --input: 0 0% 89.8%;
-    --ring: 0 0% 3.9%;
+    --border: 220 13% 91%;
+    --input: 220 13% 91%;
+    --ring: 220 90% 56%;
 
     --radius: 0.75rem;
+
+    --sidebar: 210 17% 98%;
+    --sidebar-foreground: 0 0% 10%;
+
+    --text-tertiary: 218 11% 65%;
 
     /* Status colors */
     --status-prepare: 48 96% 89%;
@@ -56,42 +61,47 @@
     --badge-error: 0 84% 93%;
     --badge-error-text: 0 70% 35%;
 
-    /* Brand emerald */
-    --brand: 161 94% 30%;
-    --brand-light: 152 81% 96%;
-    --brand-dark: 163 94% 24%;
+    /* Brand coral */
+    --brand: 0 100% 71%;
+    --brand-light: 0 100% 97%;
+    --brand-dark: 0 72% 51%;
   }
 
   .dark {
-    --background: 240 6% 6%;
-    --foreground: 0 0% 96%;
+    --background: 225 21% 7%;
+    --foreground: 240 8% 95%;
 
-    --card: 240 5% 8.5%;
-    --card-foreground: 0 0% 96%;
+    --card: 226 20% 13%;
+    --card-foreground: 240 8% 95%;
 
-    --popover: 240 5% 10%;
-    --popover-foreground: 0 0% 96%;
+    --popover: 226 20% 13%;
+    --popover-foreground: 240 8% 95%;
 
-    --primary: 0 0% 98%;
-    --primary-foreground: 240 6% 6%;
+    --primary: 240 8% 95%;
+    --primary-foreground: 225 21% 7%;
 
-    --secondary: 240 4% 14%;
-    --secondary-foreground: 0 0% 96%;
+    --secondary: 226 20% 13%;
+    --secondary-foreground: 240 8% 95%;
 
-    --muted: 240 4% 14%;
-    --muted-foreground: 240 4% 58%;
+    --muted: 227 16% 17%;
+    --muted-foreground: 218 11% 65%;
 
-    --accent: 158 64% 52%;
-    --accent-foreground: 0 0% 98%;
+    --accent: 0 100% 71%;
+    --accent-foreground: 0 0% 100%;
 
-    --destructive: 0 72% 55%;
-    --destructive-foreground: 0 0% 98%;
+    --destructive: 0 84% 60%;
+    --destructive-foreground: 0 0% 100%;
 
-    --border: 240 4% 18%;
-    --input: 240 4% 18%;
-    --ring: 158 64% 52%;
+    --border: 229 16% 20%;
+    --input: 229 16% 20%;
+    --ring: 220 90% 56%;
 
-    /* Status colors - vivid on dark */
+    --sidebar: 230 23% 10%;
+    --sidebar-foreground: 240 8% 95%;
+
+    --text-tertiary: 220 9% 46%;
+
+    /* Status colors - dark */
     --status-prepare: 38 80% 18%;
     --status-prepare-text: 43 96% 70%;
     --status-prepare-border: 40 70% 30%;
@@ -113,10 +123,10 @@
     --badge-error: 0 50% 15%;
     --badge-error-text: 0 70% 65%;
 
-    /* Brand emerald - vivid on dark */
-    --brand: 158 64% 52%;
-    --brand-light: 164 86% 10%;
-    --brand-dark: 156 72% 67%;
+    /* Brand coral */
+    --brand: 0 100% 71%;
+    --brand-light: 0 33% 18%;
+    --brand-dark: 0 85% 75%;
   }
 
   * {

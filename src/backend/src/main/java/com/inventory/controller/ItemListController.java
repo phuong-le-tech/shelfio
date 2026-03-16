@@ -1,6 +1,7 @@
 package com.inventory.controller;
 
 import com.inventory.dto.request.ItemListRequest;
+import com.inventory.dto.response.CsvExportResult;
 import com.inventory.dto.response.ItemListResponse;
 import com.inventory.dto.response.PageResponse;
 import com.inventory.model.ItemList;
@@ -11,11 +12,15 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
+import org.springframework.http.ContentDisposition;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.lang.NonNull;
 import org.springframework.web.bind.annotation.*;
 
+import java.nio.charset.StandardCharsets;
 import java.util.Set;
 import java.util.UUID;
 
@@ -81,5 +86,23 @@ public class ItemListController {
     public ResponseEntity<Void> deleteList(@PathVariable @NonNull UUID id) {
         itemListService.deleteList(id);
         return ResponseEntity.noContent().build();
+    }
+
+    @GetMapping("/{id}/export")
+    public ResponseEntity<byte[]> exportList(@PathVariable @NonNull UUID id) {
+        CsvExportResult result = itemListService.exportListAsCsv(id);
+
+        ContentDisposition contentDisposition = ContentDisposition.attachment()
+                .filename(result.filename(), StandardCharsets.UTF_8)
+                .build();
+
+        HttpHeaders headers = new HttpHeaders();
+        headers.setContentDisposition(contentDisposition);
+        headers.setContentType(new MediaType("text", "csv", StandardCharsets.UTF_8));
+        headers.setContentLength(result.content().length);
+        headers.setCacheControl("no-store, no-cache, must-revalidate");
+        headers.setPragma("no-cache");
+
+        return ResponseEntity.ok().headers(headers).body(result.content());
     }
 }

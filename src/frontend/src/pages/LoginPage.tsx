@@ -11,14 +11,11 @@ import { GoogleAuthButton, GoogleDivider } from '../components/GoogleAuthButton'
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { DotPattern } from '@/components/effects/dot-pattern';
-import { BlurFade } from '@/components/effects/blur-fade';
 
 export function LoginPage() {
   const [serverError, setServerError] = useState('');
   const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
-
   const [isUnverified, setIsUnverified] = useState(false);
 
   const { login } = useAuth();
@@ -56,130 +53,107 @@ export function LoginPage() {
   };
 
   return (
-    <div className="min-h-screen flex relative overflow-hidden bg-background">
-      {/* Left side - decorative */}
-      <div className="hidden lg:flex lg:w-[45%] relative items-center justify-center overflow-hidden">
-        <DotPattern className="opacity-40" width={20} height={20} cr={1} />
-        <BlurFade delay={0.1} duration={0.8} blur="20px">
-          <h1
-            className="font-display text-[8rem] xl:text-[10rem] font-bold text-foreground/[0.04] select-none leading-none -rotate-3"
-          >
-            Shelf
-            <br />
-            io
-          </h1>
-        </BlurFade>
-      </div>
-
-      {/* Right side - form */}
-      <div className="flex-1 flex items-center justify-center px-6 lg:px-16">
-        <motion.div
-          initial={{ opacity: 0, x: 30 }}
-          animate={{ opacity: 1, x: 0 }}
-          transition={{ duration: 0.5, ease: [0.4, 0, 0.2, 1] }}
-          className="w-full max-w-md"
-        >
-          <div className="mb-10">
-            <BlurFade delay={0.2}>
-              <div className="w-12 h-12 bg-brand/10 rounded-xl flex items-center justify-center mb-6">
-                <svg aria-hidden="true" className="w-6 h-6 text-brand" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
-                </svg>
-              </div>
-            </BlurFade>
-            <BlurFade delay={0.3}>
-              <h1 className="font-display text-4xl font-semibold tracking-tight mb-2">Shelfio</h1>
-            </BlurFade>
-            <BlurFade delay={0.4}>
-              <p className="text-muted-foreground">Connectez-vous pour gérer votre inventaire</p>
-            </BlurFade>
+    <div className="min-h-screen flex items-center justify-center bg-background px-4">
+      <motion.div
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.4, ease: [0.4, 0, 0.2, 1] }}
+        className="w-full max-w-[420px]"
+      >
+        <div className="rounded-[20px] border p-10">
+          {/* Header */}
+          <div className="text-center mb-7">
+            <h1 className="font-display text-[28px] font-bold tracking-tight">Shelfio</h1>
+            <p className="text-base text-muted-foreground mt-2">Connexion à votre compte</p>
           </div>
 
-          <div className="rounded-2xl border bg-card p-8 shadow-float">
-            <form onSubmit={handleSubmit(onSubmit)} className="space-y-5">
-              {verified && (
-                <div className="bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-lg px-4 py-3 text-green-700 dark:text-green-400 text-sm flex items-center gap-2">
-                  <CheckCircle className="h-4 w-4 flex-shrink-0" />
-                  Email vérifié avec succès ! Vous pouvez maintenant vous connecter.
-                </div>
-              )}
+          {verified && (
+            <div className="bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-xl px-4 py-3 text-green-700 dark:text-green-400 text-sm flex items-center gap-2 mb-4">
+              <CheckCircle className="h-4 w-4 flex-shrink-0" />
+              Email vérifié avec succès ! Vous pouvez maintenant vous connecter.
+            </div>
+          )}
 
-              {reset && (
-                <div className="bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-lg px-4 py-3 text-green-700 dark:text-green-400 text-sm flex items-center gap-2">
-                  <CheckCircle className="h-4 w-4 flex-shrink-0" />
-                  Mot de passe réinitialisé avec succès ! Connectez-vous avec votre nouveau mot de passe.
-                </div>
-              )}
+          {reset && (
+            <div className="bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-xl px-4 py-3 text-green-700 dark:text-green-400 text-sm flex items-center gap-2 mb-4">
+              <CheckCircle className="h-4 w-4 flex-shrink-0" />
+              Mot de passe réinitialisé avec succès !
+            </div>
+          )}
 
-              {serverError && (
-                <div className="bg-destructive/10 border border-destructive/20 rounded-lg px-4 py-3 text-destructive text-sm">
-                  {serverError}
-                  {isUnverified && (
-                    <Link to="/verify-email" className="block mt-1 font-medium underline">
-                      Renvoyer l'email de vérification
-                    </Link>
-                  )}
-                </div>
+          {serverError && (
+            <div className="bg-destructive/10 border border-destructive/20 rounded-xl px-4 py-3 text-destructive text-sm mb-4">
+              {serverError}
+              {isUnverified && (
+                <Link to="/verify-email" className="block mt-1 font-medium underline">
+                  Renvoyer l'email de vérification
+                </Link>
               )}
+            </div>
+          )}
 
-              <div className="space-y-2">
-                <Label htmlFor="email">Email</Label>
+          <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
+            <div className="space-y-1.5">
+              <Label htmlFor="email" className="text-[13px] font-medium">Email</Label>
+              <Input
+                id="email"
+                type="email"
+                {...register('email')}
+                className={`rounded-xl bg-card ${errors.email ? 'border-destructive focus-visible:ring-destructive' : 'border-transparent'}`}
+                placeholder="vous@exemple.com"
+                aria-invalid={!!errors.email}
+                aria-describedby={errors.email ? 'email-error' : undefined}
+              />
+              {errors.email && (
+                <p id="email-error" role="alert" className="text-sm text-destructive flex items-center gap-1.5">
+                  <AlertCircle className="h-4 w-4 flex-shrink-0" />
+                  {errors.email.message}
+                </p>
+              )}
+            </div>
+
+            <div className="space-y-1.5">
+              <div className="flex items-center justify-between">
+                <Label htmlFor="password" className="text-[13px] font-medium">Mot de passe</Label>
+                <Link
+                  to="/forgot-password"
+                  className="text-[13px] font-medium text-brand hover:opacity-80 transition-opacity"
+                >
+                  Mot de passe oublié ?
+                </Link>
+              </div>
+              <div className="relative">
                 <Input
-                  id="email"
-                  type="email"
-                  {...register('email')}
-                  className={errors.email ? 'border-destructive focus-visible:ring-destructive' : ''}
-                  placeholder="vous@exemple.com"
-                  aria-invalid={!!errors.email}
-                  aria-describedby={errors.email ? 'email-error' : undefined}
+                  id="password"
+                  type={showPassword ? 'text' : 'password'}
+                  {...register('password')}
+                  className={`rounded-xl bg-card pr-10 ${errors.password ? 'border-destructive focus-visible:ring-destructive' : 'border-transparent'}`}
+                  placeholder="Entrez votre mot de passe"
+                  aria-invalid={!!errors.password}
+                  aria-describedby={errors.password ? 'password-error' : undefined}
                 />
-                {errors.email && (
-                  <p id="email-error" role="alert" className="text-sm text-destructive flex items-center gap-1.5">
-                    <AlertCircle className="h-4 w-4 flex-shrink-0" />
-                    {errors.email.message}
-                  </p>
-                )}
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
+                  aria-label={showPassword ? 'Masquer le mot de passe' : 'Afficher le mot de passe'}
+                >
+                  {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                </button>
               </div>
+              {errors.password && (
+                <p id="password-error" role="alert" className="text-sm text-destructive flex items-center gap-1.5">
+                  <AlertCircle className="h-4 w-4 flex-shrink-0" />
+                  {errors.password.message}
+                </p>
+              )}
+            </div>
 
-              <div className="space-y-2">
-                <div className="flex items-center justify-between">
-                  <Label htmlFor="password">Mot de passe</Label>
-                  <Link to="/forgot-password" className="text-xs text-muted-foreground hover:text-foreground hover:underline">
-                    Mot de passe oublié ?
-                  </Link>
-                </div>
-                <div className="relative">
-                  <Input
-                    id="password"
-                    type={showPassword ? 'text' : 'password'}
-                    {...register('password')}
-                    className={errors.password ? 'border-destructive focus-visible:ring-destructive pr-10' : 'pr-10'}
-                    placeholder="Entrez votre mot de passe"
-                    aria-invalid={!!errors.password}
-                    aria-describedby={errors.password ? 'password-error' : undefined}
-                  />
-                  <button
-                    type="button"
-                    onClick={() => setShowPassword(!showPassword)}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
-                    aria-label={showPassword ? 'Masquer le mot de passe' : 'Afficher le mot de passe'}
-                  >
-                    {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                  </button>
-                </div>
-                {errors.password && (
-                  <p id="password-error" role="alert" className="text-sm text-destructive flex items-center gap-1.5">
-                    <AlertCircle className="h-4 w-4 flex-shrink-0" />
-                    {errors.password.message}
-                  </p>
-                )}
-              </div>
-
+            <div className="space-y-3 pt-3">
               <Button
                 type="submit"
                 disabled={loading}
-                className="w-full h-11"
-                size="lg"
+                className="w-full rounded-xl h-[46px] text-[15px] font-semibold"
               >
                 {loading ? (
                   <span className="flex items-center justify-center gap-2">
@@ -190,28 +164,28 @@ export function LoginPage() {
                     Connexion...
                   </span>
                 ) : (
-                  'Se connecter'
+                  'Connexion'
                 )}
               </Button>
-            </form>
 
-            <GoogleDivider />
-            <GoogleAuthButton
-              label="Se connecter avec Google"
-              onSuccess={() => navigate(from, { replace: true })}
-              onError={(msg) => setServerError(msg)}
-              disabled={loading}
-            />
-          </div>
+              <GoogleDivider />
+              <GoogleAuthButton
+                label="Continuer avec Google"
+                onSuccess={() => navigate(from, { replace: true })}
+                onError={(msg) => setServerError(msg)}
+                disabled={loading}
+              />
+            </div>
+          </form>
 
-          <p className="mt-6 text-center text-muted-foreground text-sm">
-            Nouveau sur Shelfio ?{' '}
-            <Link to="/signup" className="text-foreground font-medium hover:underline">
+          <p className="mt-7 text-center text-sm text-muted-foreground">
+            Pas encore de compte ?{' '}
+            <Link to="/signup" className="text-brand font-semibold hover:opacity-80 transition-opacity">
               Créer un compte
             </Link>
           </p>
-        </motion.div>
-      </div>
+        </div>
+      </motion.div>
     </div>
   );
 }

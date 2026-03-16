@@ -26,8 +26,6 @@ public interface UserRepository extends JpaRepository<User, UUID>, JpaSpecificat
     boolean existsByEmail(String email);
     long countByRole(Role role);
 
-    Optional<User> findByStripeCustomerId(String stripeCustomerId);
-
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("SELECT u FROM User u WHERE u.stripeCustomerId = :customerId")
     Optional<User> findByStripeCustomerIdWithLock(@Param("customerId") String customerId);

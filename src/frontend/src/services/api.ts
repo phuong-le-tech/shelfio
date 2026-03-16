@@ -35,6 +35,26 @@ export const listsApi = {
   delete: async (id: string): Promise<void> => {
     await http.delete(`/lists/${id}`);
   },
+
+  exportCsv: async (id: string): Promise<{ blob: Blob; filename: string }> => {
+    const response = await http.get(`/lists/${id}/export`, {
+      responseType: 'blob',
+    });
+
+    let filename = 'export.csv';
+    const disposition = response.headers['content-disposition'];
+    if (disposition) {
+      // Try RFC 5987 filename* first, then plain filename
+      const utf8Match = disposition.match(/filename\*=UTF-8''([^;]+)/i);
+      const plainMatch = disposition.match(/filename="?([^";\n]+)"?/i);
+      const extracted = utf8Match?.[1] ?? plainMatch?.[1];
+      if (extracted) {
+        filename = decodeURIComponent(extracted.trim());
+      }
+    }
+
+    return { blob: response.data as Blob, filename };
+  },
 };
 
 export const itemsApi = {

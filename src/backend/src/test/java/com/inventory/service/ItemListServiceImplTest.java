@@ -1,13 +1,20 @@
 package com.inventory.service;
 
+import com.inventory.dto.CustomFieldDefinition;
 import com.inventory.dto.request.ItemListRequest;
+import com.inventory.dto.response.CsvExportResult;
+import com.inventory.enums.CustomFieldType;
+import com.inventory.enums.ItemStatus;
 import com.inventory.enums.Role;
+import com.inventory.exception.ExportLimitExceededException;
 import com.inventory.exception.ItemListNotFoundException;
 import com.inventory.exception.ListLimitExceededException;
 import com.inventory.exception.UnauthorizedException;
+import com.inventory.model.Item;
 import com.inventory.model.ItemList;
 import com.inventory.model.User;
 import com.inventory.repository.ItemListRepository;
+import com.inventory.repository.ItemRepository;
 import com.inventory.repository.UserRepository;
 import com.inventory.security.SecurityUtils;
 import com.inventory.service.impl.ItemListServiceImpl;
@@ -24,7 +31,9 @@ import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 
+import java.nio.charset.StandardCharsets;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -45,6 +54,9 @@ class ItemListServiceImplTest {
 
     @Mock
     private SecurityUtils securityUtils;
+
+    @Mock
+    private ItemRepository itemRepository;
 
     @Mock
     private CustomFieldValidator customFieldValidator;
@@ -326,6 +338,205 @@ class ItemListServiceImplTest {
             when(itemListRepository.existsById(nonExistingId)).thenReturn(false);
 
             assertThatThrownBy(() -> itemListService.deleteList(nonExistingId))
+                    .isInstanceOf(ItemListNotFoundException.class);
+        }
+    }
+
+    @Nested
+    @DisplayName("exportListAsCsv")
+    class ExportListAsCsvTests {
+
+        @Test
+        @DisplayName("empty list should produce headers only with BOM")
+        void emptyList_headersOnlyWithBom() {
+            when(securityUtils.isAdmin()).thenReturn(true);
+            when(securityUtils.getCurrentUserId()).thenReturn(Optional.of(testUserId));
+            when(itemListRepository.findById(testListId)).thenReturn(Optional.of(testList));
+            when(itemRepository.countByItemListId(testListId)).thenReturn(0L);
+            when(itemRepository.findAllByItemListIdOrderByCreatedAtAsc(testListId)).thenReturn(List.of());
+
+            CsvExportResult result = itemListService.exportListAsCsv(testListId);
+
+            String csv = new String(result.content(), StandardCharsets.UTF_8);
+            assertThat(csv).startsWith("\uFEFFsep=,");
+            assertThat(csv).contains("Name,Status,Stock");
+            // Only sep hint + header + BOM, no data rows
+            String[] lines = csv.replace("\uFEFF", "").split("\r\n");
+            assertThat(lines[0]).isEqualTo("sep=,");
+            assertThat(lines[1]).isEqualTo("Name,Status,Stock");
+        }
+
+        @Test
+        @DisplayName("should include custom field columns in header sorted by displayOrder")
+        void customFields_sortedInHeader() {
+            List<CustomFieldDefinition> definitions = List.of(
+                    new CustomFieldDefinition("color", "Color", CustomFieldType.TEXT, false, 2),
+                    new CustomFieldDefinition("price", "Price", CustomFieldType.NUMBER, false, 1)
+            );
+            testList.setCustomFieldDefinitions(definitions);
+
+            Item item = new Item();
+            item.setName("Widget");
+            item.setStatus(ItemStatus.AVAILABLE);
+            item.setStock(5);
+            item.setCustomFieldValues(Map.of("price", 9.99, "color", "Red"));
+
+            when(securityUtils.isAdmin()).thenReturn(true);
+            when(securityUtils.getCurrentUserId()).thenReturn(Optional.of(testUserId));
+            when(itemListRepository.findById(testListId)).thenReturn(Optional.of(testList));
+            when(itemRepository.countByItemListId(testListId)).thenReturn(1L);
+            when(itemRepository.findAllByItemListIdOrderByCreatedAtAsc(testListId)).thenReturn(List.of(item));
+
+            CsvExportResult result = itemListService.exportListAsCsv(testListId);
+
+            String csv = new String(result.content(), StandardCharsets.UTF_8);
+            String[] lines = csv.replace("\uFEFF", "").split("\r\n");
+            // Price (order 1) before Color (order 2)
+            assertThat(lines[0]).isEqualTo("sep=,");
+            assertThat(lines[1]).isEqualTo("Name,Status,Stock,Price,Color");
+            assertThat(lines[2]).isEqualTo("Widget,AVAILABLE,5,9.99,Red");
+        }
+
+        @Test
+        @DisplayName("should escape fields with commas and quotes")
+        void csvEscaping_commasAndQuotes() {
+            Item item = new Item();
+            item.setName("Widget, \"Deluxe\"");
+            item.setStatus(ItemStatus.AVAILABLE);
+            item.setStock(3);
+
+            when(securityUtils.isAdmin()).thenReturn(true);
+            when(securityUtils.getCurrentUserId()).thenReturn(Optional.of(testUserId));
+            when(itemListRepository.findById(testListId)).thenReturn(Optional.of(testList));
+            when(itemRepository.countByItemListId(testListId)).thenReturn(1L);
+            when(itemRepository.findAllByItemListIdOrderByCreatedAtAsc(testListId)).thenReturn(List.of(item));
+
+            CsvExportResult result = itemListService.exportListAsCsv(testListId);
+
+            String csv = new String(result.content(), StandardCharsets.UTF_8);
+            String[] lines = csv.replace("\uFEFF", "").split("\r\n");
+            // Commas and quotes in name should be escaped
+            assertThat(lines[2]).startsWith("\"Widget, \"\"Deluxe\"\"\"");
+        }
+
+        @Test
+        @DisplayName("should protect against CSV injection")
+        void csvInjection_prefixedWithTab() {
+            Item item = new Item();
+            item.setName("=HYPERLINK(\"evil\")");
+            item.setStatus(ItemStatus.AVAILABLE);
+            item.setStock(1);
+
+            when(securityUtils.isAdmin()).thenReturn(true);
+            when(securityUtils.getCurrentUserId()).thenReturn(Optional.of(testUserId));
+            when(itemListRepository.findById(testListId)).thenReturn(Optional.of(testList));
+            when(itemRepository.countByItemListId(testListId)).thenReturn(1L);
+            when(itemRepository.findAllByItemListIdOrderByCreatedAtAsc(testListId)).thenReturn(List.of(item));
+
+            CsvExportResult result = itemListService.exportListAsCsv(testListId);
+
+            String csv = new String(result.content(), StandardCharsets.UTF_8);
+            // Field starting with = should be prefixed with tab and always quoted
+            assertThat(csv).contains("\"\t=HYPERLINK(\"\"evil\"\")\"");
+        }
+
+        @Test
+        @DisplayName("should handle null custom field values")
+        void nullCustomFieldValues_emptyCell() {
+            List<CustomFieldDefinition> definitions = List.of(
+                    new CustomFieldDefinition("notes", "Notes", CustomFieldType.TEXT, false, 1)
+            );
+            testList.setCustomFieldDefinitions(definitions);
+
+            Item item = new Item();
+            item.setName("Widget");
+            item.setStatus(ItemStatus.AVAILABLE);
+            item.setStock(2);
+            item.setCustomFieldValues(null);
+
+            when(securityUtils.isAdmin()).thenReturn(true);
+            when(securityUtils.getCurrentUserId()).thenReturn(Optional.of(testUserId));
+            when(itemListRepository.findById(testListId)).thenReturn(Optional.of(testList));
+            when(itemRepository.countByItemListId(testListId)).thenReturn(1L);
+            when(itemRepository.findAllByItemListIdOrderByCreatedAtAsc(testListId)).thenReturn(List.of(item));
+
+            CsvExportResult result = itemListService.exportListAsCsv(testListId);
+
+            String csv = new String(result.content(), StandardCharsets.UTF_8);
+            String[] lines = csv.replace("\uFEFF", "").split("\r\n");
+            // Data row should end with comma (empty custom field)
+            assertThat(lines[2]).isEqualTo("Widget,AVAILABLE,2,");
+        }
+
+        @Test
+        @DisplayName("filename should be sanitized and contain date")
+        void filename_sanitizedWithDate() {
+            testList.setName("Café / Résumé!");
+
+            when(securityUtils.isAdmin()).thenReturn(true);
+            when(securityUtils.getCurrentUserId()).thenReturn(Optional.of(testUserId));
+            when(itemListRepository.findById(testListId)).thenReturn(Optional.of(testList));
+            when(itemRepository.countByItemListId(testListId)).thenReturn(0L);
+            when(itemRepository.findAllByItemListIdOrderByCreatedAtAsc(testListId)).thenReturn(List.of());
+
+            CsvExportResult result = itemListService.exportListAsCsv(testListId);
+
+            // Spaces and special chars replaced with _, consecutive _ collapsed, leading/trailing _ trimmed
+            assertThat(result.filename()).matches("Caf_R_sum_.*\\.csv");
+            assertThat(result.filename()).endsWith(".csv");
+        }
+
+        @Test
+        @DisplayName("should throw when export exceeds item limit")
+        void exportExceedsLimit_throwsException() {
+            when(securityUtils.isAdmin()).thenReturn(true);
+            when(itemListRepository.findById(testListId)).thenReturn(Optional.of(testList));
+            when(itemRepository.countByItemListId(testListId)).thenReturn(10_001L);
+
+            assertThatThrownBy(() -> itemListService.exportListAsCsv(testListId))
+                    .isInstanceOf(ExportLimitExceededException.class)
+                    .hasMessageContaining("10000");
+
+            // Verify items are never loaded when count exceeds limit
+            verify(itemRepository, never()).findAllByItemListIdOrderByCreatedAtAsc(any());
+        }
+
+        @Test
+        @DisplayName("should preserve negative numbers without injection prefix")
+        void negativeNumbers_notPrefixed() {
+            List<CustomFieldDefinition> definitions = List.of(
+                    new CustomFieldDefinition("temp", "Temperature", CustomFieldType.NUMBER, false, 1)
+            );
+            testList.setCustomFieldDefinitions(definitions);
+
+            Item item = new Item();
+            item.setName("Freezer");
+            item.setStatus(ItemStatus.AVAILABLE);
+            item.setStock(1);
+            item.setCustomFieldValues(Map.of("temp", -5));
+
+            when(securityUtils.isAdmin()).thenReturn(true);
+            when(securityUtils.getCurrentUserId()).thenReturn(Optional.of(testUserId));
+            when(itemListRepository.findById(testListId)).thenReturn(Optional.of(testList));
+            when(itemRepository.countByItemListId(testListId)).thenReturn(1L);
+            when(itemRepository.findAllByItemListIdOrderByCreatedAtAsc(testListId)).thenReturn(List.of(item));
+
+            CsvExportResult result = itemListService.exportListAsCsv(testListId);
+
+            String csv = new String(result.content(), StandardCharsets.UTF_8);
+            String[] lines = csv.replace("\uFEFF", "").split("\r\n");
+            // -5 is a legitimate number, should NOT be tab-prefixed
+            assertThat(lines[2]).isEqualTo("Freezer,AVAILABLE,1,-5");
+        }
+
+        @Test
+        @DisplayName("should throw when list not found")
+        void listNotFound_throwsException() {
+            UUID nonExistingId = UUID.randomUUID();
+            when(securityUtils.isAdmin()).thenReturn(true);
+            when(itemListRepository.findById(nonExistingId)).thenReturn(Optional.empty());
+
+            assertThatThrownBy(() -> itemListService.exportListAsCsv(nonExistingId))
                     .isInstanceOf(ItemListNotFoundException.class);
         }
     }
