@@ -1,15 +1,22 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import {
   Package,
-  Inbox,
+  Layers,
   AlertTriangle,
-  XCircle,
+  AlertCircle,
   Plus,
-  Pencil,
-  Eye,
 } from "lucide-react";
+import {
+  BarChart,
+  Bar,
+  XAxis,
+  YAxis,
+  Tooltip,
+  ResponsiveContainer,
+  Cell,
+} from "recharts";
 import { dashboardApi } from "../services/api";
 import { queryKeys } from "../lib/queryKeys";
 import {
@@ -25,12 +32,6 @@ import {
 } from "@/components/effects/staggered-list";
 import { STATUS_LABELS, STATUS_BADGE_VARIANTS, ItemStatus } from "../types/item";
 import { Badge } from "@/components/ui/badge";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
 import ListCombobox from "../components/ListCombobox";
 
 export default function Dashboard() {
@@ -49,6 +50,36 @@ export default function Dashboard() {
       setSelectedListId("");
     };
   }, []);
+
+  const statusChartData = useMemo(() => {
+    if (!stats?.countByStatus) return [];
+    const statusConfig: Record<string, { label: string; fill: string }> = {
+      AVAILABLE: { label: "Disponible", fill: "#22c55e" },
+      TO_VERIFY: { label: "À vérifier", fill: "#f59e0b" },
+      NEEDS_MAINTENANCE: { label: "Maintenance", fill: "#6366f1" },
+      DAMAGED: { label: "Endommagé", fill: "#ef4444" },
+    };
+    return Object.entries(stats.countByStatus)
+      .map(([key, count]) => ({
+        name: statusConfig[key]?.label ?? key,
+        count,
+        fill: statusConfig[key]?.fill ?? "#94a3b8",
+      }))
+      .filter((d) => d.count > 0);
+  }, [stats?.countByStatus]);
+
+  const categoryData = useMemo(() => {
+    if (!stats?.countByCategory) return [];
+    const colors = ["#ef4444", "#22c55e", "#3b82f6", "#f59e0b", "#8b5cf6", "#ec4899"];
+    return Object.entries(stats.countByCategory)
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, 6)
+      .map(([name, count], i) => ({
+        name: name || "Autre",
+        count,
+        color: colors[i % colors.length],
+      }));
+  }, [stats?.countByCategory]);
 
   if (loading) {
     return (
@@ -92,55 +123,41 @@ export default function Dashboard() {
     {
       label: "Total articles",
       value: stats?.totalItems || 0,
-      subtext: "Toutes listes confondues",
       icon: Package,
-      iconColor: "text-muted-foreground",
+      iconColor: "text-green-500",
+      iconBg: "bg-green-50 dark:bg-green-950",
     },
     {
       label: "Quantité totale",
       value: stats?.totalQuantity || 0,
-      subtext: "Unités en inventaire",
-      icon: Inbox,
-      iconColor: "text-muted-foreground",
+      icon: Layers,
+      iconColor: "text-indigo-500",
+      iconBg: "bg-indigo-100 dark:bg-indigo-950",
     },
     {
       label: "À vérifier",
       value: stats?.toVerifyCount || 0,
-      subtext: "Articles à contrôler",
       icon: AlertTriangle,
       iconColor: "text-amber-500",
+      iconBg: "bg-amber-50 dark:bg-amber-950",
     },
     {
       label: "Attention requise",
       value: stats?.needsAttentionCount || 0,
-      subtext: "Maintenance ou endommagé",
-      icon: XCircle,
+      icon: AlertCircle,
       iconColor: "text-red-500",
+      iconBg: "bg-red-50 dark:bg-red-950",
     },
   ];
-
-  const listColors = [
-    "bg-brand",
-    "bg-emerald-600",
-    "bg-teal-500",
-    "bg-cyan-500",
-    "bg-green-600",
-  ];
-
 
   return (
     <div className="max-w-7xl mx-auto space-y-10 pb-10">
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
           <BlurFade delay={0.1}>
-            <h1 className="font-display text-3xl font-semibold tracking-tight">
+            <h1 className="font-display text-[28px] font-bold tracking-tight">
               Tableau de bord
             </h1>
-          </BlurFade>
-          <BlurFade delay={0.2}>
-            <p className="text-muted-foreground mt-1">
-              Aperçu de votre inventaire
-            </p>
           </BlurFade>
         </div>
         <BlurFade delay={0.3}>
@@ -186,20 +203,15 @@ export default function Dashboard() {
       >
         {statCards.map((card, idx) => (
           <StaggeredItem key={idx}>
-            <div className="rounded-xl border bg-card p-5 shadow-sm transition-all duration-200 hover:shadow-md h-full flex flex-col justify-between">
-              <div className="flex items-start justify-between mb-4">
-                <span className="font-medium text-sm text-foreground">
-                  {card.label}
-                </span>
-                <card.icon className={`h-4 w-4 ${card.iconColor}`} />
+            <div className="rounded-2xl bg-card p-5 h-full flex flex-col gap-2.5">
+              <div className={`w-10 h-10 rounded-[10px] flex items-center justify-center ${card.iconBg}`}>
+                <card.icon className={`h-5 w-5 ${card.iconColor}`} />
               </div>
-              <div>
-                <div className="text-3xl font-display font-bold tracking-tight mb-1">
-                  {card.value}
-                </div>
-                <div className="text-xs text-muted-foreground">
-                  {card.subtext}
-                </div>
+              <div className="font-display text-[32px] font-extrabold tracking-tight leading-none">
+                {card.value.toLocaleString("fr-FR")}
+              </div>
+              <div className="text-[13px] font-medium text-muted-foreground">
+                {card.label}
               </div>
             </div>
           </StaggeredItem>
@@ -229,145 +241,139 @@ export default function Dashboard() {
         </BlurFade>
       )}
 
-      {/* Lists Overview */}
-      {stats?.listsOverview && stats.listsOverview.length > 0 && (
+      {/* Charts: Status + Categories side by side */}
+      {stats && stats.totalItems > 0 && (statusChartData.length > 0 || categoryData.length > 0) && (
         <BlurFade delay={0.4}>
-          <section>
-            <div className="mb-4">
-              <h2 className="text-lg font-semibold tracking-tight text-foreground">
-                Aperçu des listes
-              </h2>
-              <p className="text-sm text-muted-foreground">
-                Votre inventaire organisé par listes
-              </p>
-            </div>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-              {stats.listsOverview.map((list, idx) => (
-                <div
-                  key={idx}
-                  className="rounded-xl border bg-card p-5 shadow-sm transition-all hover:shadow-md"
-                >
-                  <div className="flex items-center gap-3 mb-6">
-                    <div
-                      className={`w-3 h-3 rounded-full ${listColors[idx % listColors.length]}`}
-                    ></div>
-                    <span className="font-medium text-foreground">
-                      {list.listName}
-                    </span>
-                  </div>
-                  <div className="space-y-2">
-                    <div className="flex justify-between items-center text-sm">
-                      <span className="text-muted-foreground">Articles :</span>
-                      <span className="font-medium">{list.itemsCount}</span>
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+            {statusChartData.length > 0 && (
+              <section className="rounded-2xl bg-card p-5">
+                <h2 className="font-display text-lg font-bold tracking-tight text-foreground mb-4">
+                  Articles par statut
+                </h2>
+                <ResponsiveContainer width="100%" height={200}>
+                  <BarChart data={statusChartData}>
+                    <XAxis dataKey="name" tick={{ fontSize: 12 }} axisLine={false} tickLine={false} />
+                    <YAxis hide />
+                    <Tooltip
+                      contentStyle={{ borderRadius: "0.75rem", border: "1px solid hsl(var(--border))", background: "hsl(var(--card))" }}
+                      labelStyle={{ fontWeight: 600 }}
+                    />
+                    <Bar dataKey="count" radius={[6, 6, 0, 0]}>
+                      {statusChartData.map((entry, i) => (
+                        <Cell key={i} fill={entry.fill} />
+                      ))}
+                    </Bar>
+                  </BarChart>
+                </ResponsiveContainer>
+              </section>
+            )}
+
+            {categoryData.length > 0 && (
+              <section className="rounded-2xl bg-card p-5">
+                <h2 className="font-display text-lg font-bold tracking-tight text-foreground mb-4">
+                  Articles par catégorie
+                </h2>
+                <div className="space-y-3">
+                  {categoryData.map((cat) => (
+                    <div key={cat.name} className="flex items-center gap-3">
+                      <div className="w-3 h-3 rounded-full flex-shrink-0" style={{ backgroundColor: cat.color }} />
+                      <span className="text-sm text-foreground flex-1">{cat.name}</span>
+                      <span className="text-sm font-medium text-foreground">{cat.count}</span>
                     </div>
-                    <div className="flex justify-between items-center text-sm">
-                      <span className="text-muted-foreground">Quantité :</span>
-                      <span className="font-medium">{list.totalQuantity}</span>
-                    </div>
-                  </div>
+                  ))}
                 </div>
-              ))}
-            </div>
-          </section>
+              </section>
+            )}
+          </div>
         </BlurFade>
       )}
 
-      {/* Recently Updated Table */}
-      {stats?.recentlyUpdated && stats.recentlyUpdated.length > 0 && (
-        <BlurFade delay={0.5}>
-          <section>
-            <div className="mb-4">
-              <h2 className="text-lg font-semibold tracking-tight text-foreground">
-                Récemment modifiés
-              </h2>
-              <p className="text-sm text-muted-foreground">
-                Les 5 derniers articles modifiés
-              </p>
-            </div>
-            <div className="rounded-xl border bg-card overflow-hidden shadow-sm">
-              <div className="overflow-x-auto">
-                <table className="w-full text-sm text-left">
-                  <thead className="bg-muted/30 text-muted-foreground font-medium text-xs">
-                    <tr>
-                      <th className="px-5 py-3 rounded-tl-xl font-medium">
-                        Nom de l'article
-                      </th>
-                      <th className="px-5 py-3 font-medium">Liste</th>
-                      <th className="px-5 py-3 font-medium">Quantité</th>
-                      <th className="px-5 py-3 font-medium">Statut</th>
-                      <th className="px-5 py-3 font-medium hidden md:table-cell">
-                        Dernière modification
-                      </th>
-                      <th className="px-5 py-3 rounded-tr-xl"></th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-border/50">
-                    {stats.recentlyUpdated.map((item, idx) => (
-                      <tr
-                        key={idx}
-                        className="hover:bg-muted/30 transition-colors group cursor-pointer"
-                        onClick={() => navigate(`/lists/${item.listId}/items/${item.id}/edit`)}
-                      >
-                        <td className="px-5 py-4">
-                          <div className="font-medium text-foreground">
-                            {item.name}
-                          </div>
-                        </td>
-                        <td className="px-5 py-4">
-                          <div className="flex items-center gap-2">
-                            <div className="w-2 h-2 rounded-full bg-brand"></div>
-                            <span className="text-foreground">
-                              {item.listName}
-                            </span>
-                          </div>
-                        </td>
-                        <td className="px-5 py-4 font-medium text-foreground">
-                          {item.quantity}
-                        </td>
-                        <td className="px-5 py-4">
-                          <Badge variant={STATUS_BADGE_VARIANTS[item.status as ItemStatus] || "default"}>
-                            {STATUS_LABELS[item.status as ItemStatus] ||
-                              item.status}
-                          </Badge>
-                        </td>
-                        <td className="px-5 py-4 text-muted-foreground hidden md:table-cell">
-                          {new Date(item.lastUpdated).toLocaleDateString(
-                            "fr-FR",
-                            { month: "short", day: "numeric", year: "numeric" },
-                          )}
-                        </td>
-                        <td className="px-5 py-4 text-right">
-                          <DropdownMenu>
-                            <DropdownMenuTrigger asChild>
-                              <Button
-                                variant="ghost"
-                                size="icon"
-                                aria-label="Options de l'article"
-                                className="h-8 w-8 text-muted-foreground opacity-100 md:opacity-0 md:group-hover:opacity-100 focus-visible:opacity-100 transition-opacity"
-                                onClick={(e) => e.stopPropagation()}
-                              >
-                                <Eye className="h-4 w-4" />
-                              </Button>
-                            </DropdownMenuTrigger>
-                            <DropdownMenuContent align="end" onClick={(e) => e.stopPropagation()}>
-                              <DropdownMenuItem onClick={() => navigate(`/lists/${item.listId}`)}>
-                                <Eye className="h-4 w-4 mr-2" />
-                                Voir la liste
-                              </DropdownMenuItem>
-                              <DropdownMenuItem onClick={() => navigate(`/lists/${item.listId}/items/${item.id}/edit`)}>
-                                <Pencil className="h-4 w-4 mr-2" />
-                                Modifier l'article
-                              </DropdownMenuItem>
-                            </DropdownMenuContent>
-                          </DropdownMenu>
-                        </td>
+      {/* Tables Row: Lists Overview + Recently Updated side by side */}
+      {((stats?.listsOverview && stats.listsOverview.length > 0) || (stats?.recentlyUpdated && stats.recentlyUpdated.length > 0)) && (
+        <BlurFade delay={0.45}>
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+            {/* Lists Overview */}
+            {stats?.listsOverview && stats.listsOverview.length > 0 && (
+              <section className="rounded-2xl bg-card p-5 flex flex-col gap-4">
+                <div className="flex items-center justify-between">
+                  <h2 className="font-display text-lg font-bold tracking-tight text-foreground">
+                    Aperçu des listes
+                  </h2>
+                  <Link to="/lists" className="text-[13px] font-medium text-brand hover:opacity-80 transition-opacity">
+                    Voir tout →
+                  </Link>
+                </div>
+                <div className="overflow-x-auto">
+                  <table className="w-full text-left">
+                    <thead>
+                      <tr className="text-xs font-semibold text-[hsl(var(--text-tertiary))]">
+                        <th className="py-2 font-semibold">Nom</th>
+                        <th className="py-2 font-semibold w-[100px]">Articles</th>
                       </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            </div>
-          </section>
+                    </thead>
+                    <tbody>
+                      {stats.listsOverview.map((list) => (
+                        <tr key={list.listName} className="border-t border-border/50">
+                          <td className="py-2.5">
+                            <span className="text-[13px] font-medium text-foreground">{list.listName}</span>
+                          </td>
+                          <td className="py-2.5">
+                            <span className="text-[13px] font-medium text-muted-foreground">{list.itemsCount}</span>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </section>
+            )}
+
+            {/* Recently Updated */}
+            {stats?.recentlyUpdated && stats.recentlyUpdated.length > 0 && (
+              <section className="rounded-2xl bg-card p-5 flex flex-col gap-4">
+                <h2 className="font-display text-lg font-bold tracking-tight text-foreground">
+                  Récemment mis à jour
+                </h2>
+                <div className="overflow-x-auto">
+                  <table className="w-full text-left">
+                    <thead>
+                      <tr className="text-xs font-semibold text-[hsl(var(--text-tertiary))]">
+                        <th className="py-2 font-semibold">Article</th>
+                        <th className="py-2 font-semibold w-[100px]">Statut</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {stats.recentlyUpdated.map((item) => (
+                        <tr
+                          key={item.id}
+                          role="button"
+                          tabIndex={0}
+                          aria-label={`Modifier l'article ${item.name}`}
+                          className="border-t border-border/50 hover:bg-muted/30 transition-colors cursor-pointer"
+                          onClick={() => navigate(`/lists/${item.listId}/items/${item.id}/edit`)}
+                          onKeyDown={(e) => {
+                            if (e.key === 'Enter' || e.key === ' ') {
+                              e.preventDefault();
+                              navigate(`/lists/${item.listId}/items/${item.id}/edit`);
+                            }
+                          }}
+                        >
+                          <td className="py-2.5">
+                            <span className="text-[13px] font-medium text-foreground">{item.name}</span>
+                          </td>
+                          <td className="py-2.5">
+                            <Badge variant={STATUS_BADGE_VARIANTS[item.status as ItemStatus] || "default"}>
+                              {STATUS_LABELS[item.status as ItemStatus] || item.status}
+                            </Badge>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </section>
+            )}
+          </div>
         </BlurFade>
       )}
     </div>

@@ -1,7 +1,7 @@
 import { useState, useMemo } from 'react';
 import { Link } from 'react-router-dom';
-import { Plus, Pencil, Trash2, FolderOpen, Crown, Search } from 'lucide-react';
-import { motion, AnimatePresence } from 'motion/react';
+import { Plus, Trash2, FolderOpen, Crown, Search, MoreHorizontal, Pencil } from 'lucide-react';
+import { AnimatePresence } from 'motion/react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { listsApi } from '../services/api';
 import { useAuth } from '../contexts/AuthContext';
@@ -13,9 +13,28 @@ import { Input } from '@/components/ui/input';
 import { Pagination } from '@/components/Pagination';
 import { Badge } from '@/components/ui/badge';
 import { BlurFade } from '@/components/effects/blur-fade';
-import { SpotlightCard } from '@/components/effects/spotlight-card';
 import { StaggeredList, StaggeredItem } from '@/components/effects/staggered-list';
+import {
+  DropdownMenu,
+  DropdownMenuTrigger,
+  DropdownMenuContent,
+  DropdownMenuItem,
+} from '@/components/ui/dropdown-menu';
 import { queryKeys } from '../lib/queryKeys';
+
+const CATEGORY_COLORS = [
+  'bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300',
+  'bg-green-100 text-green-700 dark:bg-green-900/40 dark:text-green-300',
+  'bg-yellow-100 text-yellow-700 dark:bg-yellow-900/40 dark:text-yellow-300',
+  'bg-purple-100 text-purple-700 dark:bg-purple-900/40 dark:text-purple-300',
+  'bg-pink-100 text-pink-700 dark:bg-pink-900/40 dark:text-pink-300',
+  'bg-orange-100 text-orange-700 dark:bg-orange-900/40 dark:text-orange-300',
+];
+
+function getCategoryColor(category: string): string {
+  const hash = category.split('').reduce((acc, c) => acc + c.charCodeAt(0), 0);
+  return CATEGORY_COLORS[hash % CATEGORY_COLORS.length];
+}
 
 // Must match backend ItemListServiceImpl.MAX_FREE_LISTS
 const FREE_LIST_LIMIT = 5;
@@ -79,7 +98,7 @@ export default function ListsPage() {
           </div>
           <Skeleton className="h-10 w-36 rounded-lg" />
         </div>
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           {[...Array(6)].map((_, i) => (
             <SkeletonCard key={i} />
           ))}
@@ -93,7 +112,7 @@ export default function ListsPage() {
       <div className="flex justify-between items-start mb-8">
         <div>
           <BlurFade delay={0.1}>
-            <h1 className="font-display text-4xl font-semibold tracking-tight">Mes Listes</h1>
+            <h1 className="font-display text-[28px] font-bold tracking-tight">Mes Listes</h1>
           </BlurFade>
           <BlurFade delay={0.2}>
             <p className="text-muted-foreground mt-1">
@@ -166,61 +185,63 @@ export default function ListsPage() {
         </BlurFade>
       )}
 
-      <StaggeredList className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+      <StaggeredList className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
         <AnimatePresence>
           {filteredLists.map((list) => (
             <StaggeredItem key={list.id}>
-              <SpotlightCard className="group rounded-2xl border bg-card shadow-card transition-all duration-300 hover:shadow-elevated overflow-hidden">
-                <Link to={`/lists/${list.id}`} className="block p-6">
-                  <div className="flex items-start justify-between mb-4">
-                    <div className="w-12 h-12 rounded-xl bg-brand-light flex items-center justify-center">
-                      <span className="font-display text-xl font-bold text-foreground">
-                        {list.name[0]?.toUpperCase()}
-                      </span>
-                    </div>
-                    {list.category && (
-                      <Badge variant="secondary">{list.category}</Badge>
+              <div className="group relative rounded-2xl bg-card transition-all duration-200 overflow-hidden">
+                <Link to={`/lists/${list.id}`} className="block p-5">
+                  <div className="flex items-start justify-between mb-3">
+                    {list.category ? (
+                      <Badge className={getCategoryColor(list.category)}>{list.category}</Badge>
+                    ) : (
+                      <span />
                     )}
+                    {/* Spacer for dropdown — handled outside the link */}
+                    <span className="w-7" />
                   </div>
                   <h3 className="font-display text-lg font-semibold tracking-tight mb-1 group-hover:text-brand-dark transition-colors">
                     {list.name}
                   </h3>
                   {list.description && (
-                    <p className="text-muted-foreground text-sm line-clamp-2 mb-3">{list.description}</p>
+                    <p className="text-muted-foreground text-sm line-clamp-2 mb-4">{list.description}</p>
                   )}
-                  <p className="text-muted-foreground text-sm">
-                    <span className="font-semibold text-foreground">{list.itemCount || 0}</span> articles
-                  </p>
+                  <div className="flex justify-between text-sm text-muted-foreground mt-auto">
+                    <span><span className="font-semibold text-foreground">{list.itemCount || 0}</span> articles</span>
+                    {list.updatedAt && (
+                      <span>{new Date(list.updatedAt).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' })}</span>
+                    )}
+                  </div>
                 </Link>
 
-                <motion.div
-                  initial={{ opacity: 0, y: 10 }}
-                  whileInView={{ opacity: 1, y: 0 }}
-                  className="px-6 pb-6"
-                >
-                  <div className="flex gap-2">
-                    <Button variant="outline" size="sm" className="w-full flex-1" asChild>
-                      <Link to={`/lists/${list.id}/edit`}>
-                        <Pencil className="h-3.5 w-3.5 mr-1.5" />
-                        Modifier
-                      </Link>
-                    </Button>
-                    <Button
-                      variant="outline"
-                      size="icon"
-                      className="h-9 w-9 text-muted-foreground hover:text-destructive hover:border-destructive"
-                      onClick={(e) => {
-                        e.preventDefault();
-                        setPendingDeleteId(list.id);
-                      }}
-                      disabled={deleteMutation.isPending && deleteMutation.variables === list.id}
-                      aria-label={`Supprimer ${list.name}`}
-                    >
-                      <Trash2 className={`h-3.5 w-3.5 ${deleteMutation.isPending && deleteMutation.variables === list.id ? 'animate-pulse' : ''}`} />
-                    </Button>
-                  </div>
-                </motion.div>
-              </SpotlightCard>
+                {/* Dropdown menu — positioned top-right, outside the link */}
+                <div className="absolute top-4 right-4">
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <Button variant="ghost" size="icon" className="h-7 w-7 opacity-0 group-hover:opacity-100 focus-visible:opacity-100 transition-opacity">
+                        <MoreHorizontal className="h-4 w-4" />
+                        <span className="sr-only">Actions</span>
+                      </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end">
+                      <DropdownMenuItem asChild>
+                        <Link to={`/lists/${list.id}/edit`}>
+                          <Pencil className="h-4 w-4 mr-2" />
+                          Modifier
+                        </Link>
+                      </DropdownMenuItem>
+                      <DropdownMenuItem
+                        className="text-destructive focus:text-destructive"
+                        onClick={() => setPendingDeleteId(list.id)}
+                        disabled={deleteMutation.isPending && deleteMutation.variables === list.id}
+                      >
+                        <Trash2 className="h-4 w-4 mr-2" />
+                        Supprimer
+                      </DropdownMenuItem>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                </div>
+              </div>
             </StaggeredItem>
           ))}
         </AnimatePresence>

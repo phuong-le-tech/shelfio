@@ -7,12 +7,12 @@ import {
   Lock,
   Download,
   Trash2,
-  Crown,
   Calendar,
   Shield,
   AlertCircle,
   Eye,
   EyeOff,
+  Crown,
 } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { authApi } from '../services/authApi';
@@ -31,7 +31,7 @@ import { Badge } from '@/components/ui/badge';
 import { BlurFade } from '@/components/effects/blur-fade';
 
 export default function SettingsPage() {
-  const { user, deleteAccount, isPremium } = useAuth();
+  const { user, deleteAccount } = useAuth();
   const navigate = useNavigate();
   const { showToast } = useToast();
   const [showDeleteModal, setShowDeleteModal] = useState(false);
@@ -98,9 +98,9 @@ export default function SettingsPage() {
   if (!user) return null;
 
   return (
-    <div className="max-w-3xl mx-auto">
+    <div className="max-w-[600px] mx-auto">
       <BlurFade delay={0.1}>
-        <h1 className="font-display text-4xl font-semibold tracking-tight mb-8">
+        <h1 className="font-display text-[28px] font-bold tracking-tight mb-8">
           Paramètres
         </h1>
       </BlurFade>
@@ -108,8 +108,8 @@ export default function SettingsPage() {
       <div className="space-y-6">
         {/* Profile Information */}
         <BlurFade delay={0.15}>
-          <section className="rounded-2xl border bg-card p-8 shadow-sm">
-            <h2 className="font-display text-lg font-semibold mb-6 flex items-center gap-2">
+          <section className="rounded-2xl bg-card p-7">
+            <h2 className="font-display text-lg font-semibold mb-5 flex items-center gap-2">
               <User className="h-5 w-5" />
               Informations du profil
             </h2>
@@ -169,8 +169,8 @@ export default function SettingsPage() {
 
         {/* Change Password */}
         <BlurFade delay={0.2}>
-          <section className="rounded-2xl border bg-card p-8 shadow-sm">
-            <h2 className="font-display text-lg font-semibold mb-6 flex items-center gap-2">
+          <section className="rounded-2xl bg-card p-7">
+            <h2 className="font-display text-lg font-semibold mb-5 flex items-center gap-2">
               <Lock className="h-5 w-5" />
               Changer le mot de passe
             </h2>
@@ -315,38 +315,15 @@ export default function SettingsPage() {
           </section>
         </BlurFade>
 
-        {/* Subscription */}
+        {/* Zone de danger */}
         <BlurFade delay={0.25}>
-          <section className="rounded-2xl border bg-card p-8 shadow-sm">
-            <h2 className="font-display text-lg font-semibold mb-6 flex items-center gap-2">
-              <Crown className="h-5 w-5" />
-              Abonnement
+          <section className="rounded-2xl bg-card p-7 border border-[#FEE2E2] dark:border-red-900/50">
+            <h2 className="font-display text-lg font-semibold text-destructive mb-1">
+              Zone de danger
             </h2>
-            <div>
-              <Label className="text-muted-foreground text-xs uppercase tracking-wider">
-                Plan actuel
-              </Label>
-              <p className="text-foreground mt-1 mb-4">
-                {isPremium
-                  ? 'Premium — Listes illimitées'
-                  : 'Gratuit — 5 listes maximum'}
-              </p>
-              {!isPremium && user.role !== 'ADMIN' && (
-                <Button onClick={() => navigate('/upgrade')}>
-                  <Crown className="h-4 w-4 mr-2" />
-                  Passer en Premium
-                </Button>
-              )}
-            </div>
-          </section>
-        </BlurFade>
-
-        {/* Data & Privacy */}
-        <BlurFade delay={0.3}>
-          <section className="rounded-2xl border bg-card p-8 shadow-sm">
-            <h2 className="font-display text-lg font-semibold mb-6">
-              Données & Confidentialité
-            </h2>
+            <p className="text-sm text-muted-foreground mb-6">
+              Actions irréversibles concernant votre compte et vos données.
+            </p>
             <div className="space-y-6">
               <div>
                 <p className="text-sm text-muted-foreground mb-3">
@@ -366,8 +343,7 @@ export default function SettingsPage() {
               <Separator />
               <div>
                 <p className="text-sm text-muted-foreground mb-3">
-                  Cette action est irréversible. Toutes vos listes et articles
-                  seront supprimés.
+                  La suppression de votre compte est irréversible. Toutes vos listes et articles seront effacés.
                 </p>
                 <Button
                   onClick={() => setShowDeleteModal(true)}

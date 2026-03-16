@@ -59,7 +59,8 @@ export function AdminDashboardPage() {
       value: stats.totalUsers,
       subtext: 'Comptes enregistrés',
       icon: Users,
-      iconColor: 'text-muted-foreground',
+      iconColor: 'text-slate-500',
+      iconBg: 'bg-slate-50 dark:bg-slate-950',
     },
     {
       label: 'Actifs',
@@ -67,6 +68,7 @@ export function AdminDashboardPage() {
       subtext: 'Comptes activés',
       icon: UserCheck,
       iconColor: 'text-emerald-500',
+      iconBg: 'bg-emerald-50 dark:bg-emerald-950',
     },
     {
       label: 'Premium',
@@ -74,6 +76,7 @@ export function AdminDashboardPage() {
       subtext: `${stats.premiumConversionRate.toFixed(1)}% de conversion`,
       icon: Crown,
       iconColor: 'text-amber-500',
+      iconBg: 'bg-amber-50 dark:bg-amber-950',
     },
     {
       label: 'Admins',
@@ -81,6 +84,7 @@ export function AdminDashboardPage() {
       subtext: 'Administrateurs',
       icon: ShieldCheck,
       iconColor: 'text-blue-500',
+      iconBg: 'bg-blue-50 dark:bg-blue-950',
     },
   ];
 
@@ -97,7 +101,7 @@ export function AdminDashboardPage() {
     <div className="max-w-7xl mx-auto space-y-10 pb-10">
       <div>
         <BlurFade delay={0.1}>
-          <h1 className="font-display text-3xl font-semibold tracking-tight">
+          <h1 className="font-display text-[28px] font-bold tracking-tight">
             Statistiques
           </h1>
         </BlurFade>
@@ -115,25 +119,33 @@ export function AdminDashboardPage() {
       >
         {statCards.map((card, idx) => (
           <StaggeredItem key={idx}>
-            <div className="rounded-xl border bg-card p-5 shadow-sm transition-all duration-200 hover:shadow-md h-full flex flex-col justify-between">
-              <div className="flex items-start justify-between mb-4">
-                <span className="font-medium text-sm text-foreground">
-                  {card.label}
-                </span>
-                <card.icon className={`h-4 w-4 ${card.iconColor}`} />
+            <div className="rounded-2xl bg-card p-5 h-full flex flex-col gap-2.5">
+              <div className={`w-10 h-10 rounded-[10px] flex items-center justify-center ${card.iconBg}`}>
+                <card.icon className={`h-5 w-5 ${card.iconColor}`} />
               </div>
-              <div>
-                <div className="text-3xl font-display font-bold tracking-tight mb-1">
-                  {card.value}
-                </div>
-                <div className="text-xs text-muted-foreground">
-                  {card.subtext}
-                </div>
+              <div className="font-display text-[32px] font-extrabold tracking-tight leading-none">
+                {card.value}
+              </div>
+              <div className="text-[13px] font-medium text-muted-foreground">
+                {card.label}
               </div>
             </div>
           </StaggeredItem>
         ))}
       </StaggeredList>
+
+      {/* Conversion Rate */}
+      <BlurFade delay={0.35}>
+        <div className="rounded-2xl bg-card p-6">
+          <p className="text-sm text-muted-foreground mb-1">Taux de conversion</p>
+          <p className="text-4xl font-display font-bold tracking-tight">
+            {stats.premiumConversionRate.toFixed(1)}%
+          </p>
+          <p className="text-xs text-muted-foreground mt-1">
+            des utilisateurs actifs sont Premium
+          </p>
+        </div>
+      </BlurFade>
 
       {/* Registration Trend */}
       {chartData.length > 0 && (
@@ -148,7 +160,7 @@ export function AdminDashboardPage() {
                 Nouveaux comptes par mois (6 derniers mois)
               </p>
             </div>
-            <div className="rounded-xl border bg-card p-6 shadow-sm">
+            <div className="rounded-2xl bg-card p-6">
               <ResponsiveContainer width="100%" height={220}>
                 <BarChart data={chartData} margin={{ top: 8, right: 8, bottom: 0, left: -16 }}>
                   <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="hsl(var(--border))" />
@@ -189,7 +201,7 @@ export function AdminDashboardPage() {
       )}
 
       {/* Top Users */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
         {stats.topUsersByLists.length > 0 && (
           <BlurFade delay={0.5}>
             <section>
@@ -201,12 +213,12 @@ export function AdminDashboardPage() {
                   Les 5 utilisateurs avec le plus de listes
                 </p>
               </div>
-              <div className="rounded-xl border bg-card overflow-hidden shadow-sm">
+              <div className="rounded-2xl bg-card overflow-hidden">
                 <table className="w-full text-sm text-left">
-                  <thead className="bg-muted/30 text-muted-foreground font-medium text-xs">
+                  <thead className="bg-muted text-muted-foreground font-medium text-xs">
                     <tr>
-                      <th className="px-5 py-3 font-medium">Email</th>
-                      <th className="px-5 py-3 font-medium text-right">Listes</th>
+                      <th className="px-5 py-2.5 font-semibold">Email</th>
+                      <th className="px-5 py-2.5 font-semibold text-right">Listes</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-border/50">
@@ -234,12 +246,12 @@ export function AdminDashboardPage() {
                   Les 5 utilisateurs avec le plus d'articles
                 </p>
               </div>
-              <div className="rounded-xl border bg-card overflow-hidden shadow-sm">
+              <div className="rounded-2xl bg-card overflow-hidden">
                 <table className="w-full text-sm text-left">
-                  <thead className="bg-muted/30 text-muted-foreground font-medium text-xs">
+                  <thead className="bg-muted text-muted-foreground font-medium text-xs">
                     <tr>
-                      <th className="px-5 py-3 font-medium">Email</th>
-                      <th className="px-5 py-3 font-medium text-right">Articles</th>
+                      <th className="px-5 py-2.5 font-semibold">Email</th>
+                      <th className="px-5 py-2.5 font-semibold text-right">Articles</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-border/50">
