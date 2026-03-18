@@ -58,7 +58,6 @@ export default function BarcodeScanner({ onScan, onError, onStatusChange }: Barc
         });
       }
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   return (
