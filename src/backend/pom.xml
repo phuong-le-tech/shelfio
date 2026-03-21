@@ -121,7 +121,7 @@
         <dependency>
             <groupId>com.sksamuel.scrimage</groupId>
             <artifactId>scrimage-core</artifactId>
-            <version>4.3.8</version>
+            <version>4.3.10</version>
         </dependency>
         <dependency>
             <groupId>com.sksamuel.scrimage</groupId>
