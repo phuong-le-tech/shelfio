@@ -84,37 +84,49 @@ public class ImageProcessingService {
     }
 
     private void validateImageDimensions(byte[] input) {
+        // Try ImageIO first (works for JPEG, PNG, GIF)
         try (ByteArrayInputStream bais = new ByteArrayInputStream(input);
              ImageInputStream iis = ImageIO.createImageInputStream(bais)) {
-            if (iis == null) {
-                throw new ImageProcessingException("Unsupported image format");
-            }
-            Iterator<ImageReader> readers = ImageIO.getImageReaders(iis);
-            if (!readers.hasNext()) {
-                throw new ImageProcessingException("Unsupported image format");
-            }
-            ImageReader reader = readers.next();
-            try {
-                reader.setInput(iis);
-                int width = reader.getWidth(0);
-                int height = reader.getHeight(0);
-                if (width > MAX_SOURCE_DIMENSION || height > MAX_SOURCE_DIMENSION) {
-                    throw new ImageProcessingException(
-                            "Image dimensions too large: " + width + "x" + height
-                                    + " (max " + MAX_SOURCE_DIMENSION + "x" + MAX_SOURCE_DIMENSION + ")");
+            if (iis != null) {
+                Iterator<ImageReader> readers = ImageIO.getImageReaders(iis);
+                if (readers.hasNext()) {
+                    ImageReader reader = readers.next();
+                    try {
+                        reader.setInput(iis);
+                        validateDimensions(reader.getWidth(0), reader.getHeight(0));
+                        return;
+                    } finally {
+                        reader.dispose();
+                    }
                 }
-                long pixelCount = (long) width * height;
-                if (pixelCount > MAX_PIXEL_COUNT) {
-                    throw new ImageProcessingException(
-                            "Image pixel count too large: " + pixelCount + " (max " + MAX_PIXEL_COUNT + ")");
-                }
-            } finally {
-                reader.dispose();
             }
         } catch (ImageProcessingException e) {
             throw e;
         } catch (IOException e) {
+            // Fall through to scrimage
+        }
+
+        // Fallback: use scrimage for formats ImageIO can't read (e.g. WebP)
+        try {
+            ImmutableImage image = ImmutableImage.loader().fromBytes(input);
+            validateDimensions(image.width, image.height);
+        } catch (ImageProcessingException e) {
+            throw e;
+        } catch (Exception e) {
             throw new ImageProcessingException("Failed to read image dimensions", e);
+        }
+    }
+
+    private void validateDimensions(int width, int height) {
+        if (width > MAX_SOURCE_DIMENSION || height > MAX_SOURCE_DIMENSION) {
+            throw new ImageProcessingException(
+                    "Image dimensions too large: " + width + "x" + height
+                            + " (max " + MAX_SOURCE_DIMENSION + "x" + MAX_SOURCE_DIMENSION + ")");
+        }
+        long pixelCount = (long) width * height;
+        if (pixelCount > MAX_PIXEL_COUNT) {
+            throw new ImageProcessingException(
+                    "Image pixel count too large: " + pixelCount + " (max " + MAX_PIXEL_COUNT + ")");
         }
     }
 }

@@ -203,3 +203,16 @@ export const STATUS_BADGE_VARIANTS: Record<ItemStatus, "success" | "warning" | "
   NEEDS_MAINTENANCE: "default",
   DAMAGED: "error",
 };
+
+// AI Image Analysis
+export type AnalysisStatus = "PENDING" | "COMPLETED" | "FAILED";
+
+export interface ImageAnalysisResult {
+  analysisId: string;
+  status: AnalysisStatus;
+  suggestedName?: string | null;
+  suggestedStatus?: ItemStatus | null;
+  suggestedStock?: number | null;
+  suggestedCustomFieldValues?: Record<string, unknown> | null;
+  errorMessage?: string | null;
+}

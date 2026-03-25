@@ -78,8 +78,10 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
   }, [user]);
 
   useEffect(() => {
-    fetchWorkspaces();
-    fetchInvitations();
+    // TODO: Re-enable when workspace backend is ready
+    // fetchWorkspaces();
+    // fetchInvitations();
+    setLoading(false);
   }, [fetchWorkspaces, fetchInvitations]);
 
   const setCurrentWorkspace = useCallback(

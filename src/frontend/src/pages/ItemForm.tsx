@@ -35,6 +35,8 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { cn } from "@/lib/utils";
 import { Breadcrumb } from "../components/Breadcrumb";
 import BarcodeScannerModal from "../components/BarcodeScannerModal";
+import { ImageAnalysisSuggestions } from "../components/ImageAnalysisSuggestions";
+import { useImageAnalysis } from "../hooks/useImageAnalysis";
 import { sanitizeImageUrl } from "../utils/imageUtils";
 
 const MAX_FILE_SIZE = 10 * 1024 * 1024;
@@ -62,6 +64,7 @@ export default function ItemForm() {
   >([]);
   const [selectedListName, setSelectedListName] = useState("");
   const [scannerOpen, setScannerOpen] = useState(false);
+  const { suggestions, isAnalyzing, startAnalysis, reset: resetAnalysis } = useImageAnalysis();
 
   const schemaRef = useRef(createItemSchema([]));
   const resolver = useCallback<Resolver<ItemFormData>>(
@@ -186,6 +189,7 @@ export default function ItemForm() {
       if (typeof reader.result === "string") setImagePreview(reader.result);
     };
     reader.readAsDataURL(file);
+    startAnalysis(file, selectedListId || undefined);
   };
 
   const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -200,6 +204,7 @@ export default function ItemForm() {
     e.stopPropagation();
     setImageFile(null);
     setImagePreview(null);
+    resetAnalysis();
   };
 
   const handleDragEnter = (e: React.DragEvent) => {
@@ -230,7 +235,37 @@ export default function ItemForm() {
     }
   };
 
+  const handleApplySuggestion = useCallback((field: string, value: unknown) => {
+    // Whitelist custom field keys against known definitions to prevent prototype pollution
+    if (field.startsWith('customFieldValues.')) {
+      const key = field.replace('customFieldValues.', '');
+      if (!fieldDefs.some(f => f.name === key)) return;
+    }
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    setValue(field as any, value, { shouldDirty: true });
+  }, [setValue, fieldDefs]);
+
+  const handleApplyAllSuggestions = useCallback(() => {
+    if (!suggestions) return;
+    if (suggestions.suggestedName) setValue('name', suggestions.suggestedName, { shouldDirty: true });
+    if (suggestions.suggestedStatus) {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      setValue('status', suggestions.suggestedStatus as any, { shouldDirty: true });
+    }
+    if (suggestions.suggestedStock != null) setValue('stock', suggestions.suggestedStock, { shouldDirty: true });
+    if (suggestions.suggestedCustomFieldValues) {
+      const knownKeys = new Set(fieldDefs.map(f => f.name));
+      for (const [key, val] of Object.entries(suggestions.suggestedCustomFieldValues)) {
+        if (!knownKeys.has(key)) continue; // ignore unknown/injected keys
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        setValue(`customFieldValues.${key}` as any, val, { shouldDirty: true });
+      }
+    }
+    resetAnalysis();
+  }, [suggestions, setValue, resetAnalysis, fieldDefs]);
+
   const onSubmit = async (data: ItemFormData) => {
+    resetAnalysis();
     setSubmitting(true);
     try {
       const payload: ItemFormData = {
@@ -701,6 +736,17 @@ export default function ItemForm() {
                   </Button>
                 )}
               </label>
+              {(isAnalyzing || suggestions) && (
+                <div className="mt-4">
+                  <ImageAnalysisSuggestions
+                    suggestions={suggestions}
+                    isAnalyzing={isAnalyzing}
+                    onApply={handleApplySuggestion}
+                    onApplyAll={handleApplyAllSuggestions}
+                    onDismiss={resetAnalysis}
+                  />
+                </div>
+              )}
             </div>
           </div>
         </div>

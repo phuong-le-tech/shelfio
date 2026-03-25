@@ -11,6 +11,9 @@ import com.inventory.model.Item;
 import com.inventory.model.ItemList;
 import com.inventory.security.ApiRateLimiter;
 import com.inventory.security.CustomUserDetails;
+import com.inventory.dto.response.ImageAnalysisResult;
+import com.inventory.service.IImageAnalysisService;
+import com.inventory.service.IItemListService;
 import com.inventory.service.IItemService;
 import com.inventory.service.ImageStorageService;
 import org.junit.jupiter.api.BeforeEach;
@@ -67,6 +70,12 @@ class ItemControllerTest {
 
     @MockitoBean
     private ImageStorageService imageStorageService;
+
+    @MockitoBean
+    private IItemListService itemListService;
+
+    @MockitoBean
+    private IImageAnalysisService imageAnalysisService;
 
     private Item testItem;
     private ItemList testList;
@@ -412,6 +421,128 @@ class ItemControllerTest {
                     .andExpect(jsonPath("$.data.totalItems").value(10))
                     .andExpect(jsonPath("$.data.countByStatus.AVAILABLE").value(5))
                     .andExpect(jsonPath("$.data.countByCategory.Electronics").value(6));
+        }
+    }
+
+    @Nested
+    @DisplayName("POST /api/v1/items/analyze-image")
+    class AnalyzeImageTests {
+
+        private final UUID userId = UUID.randomUUID();
+
+        @Test
+        @DisplayName("should return 503 when AI is not available")
+        void analyzeImage_aiUnavailable_returns503() throws Exception {
+            when(imageAnalysisService.isAvailable()).thenReturn(false);
+
+            MockMultipartFile image = new MockMultipartFile("image", "test.jpg", "image/jpeg",
+                    new byte[]{(byte) 0xFF, (byte) 0xD8, (byte) 0xFF, 0, 0, 0, 0, 0, 0, 0, 0, 0});
+
+            mockMvc.perform(multipart("/api/v1/items/analyze-image").file(image)
+                            .with(user(new CustomUserDetails(userId, "test@test.com", "USER"))))
+                    .andExpect(status().isServiceUnavailable());
+        }
+
+        @Test
+        @DisplayName("should return 202 with analysisId for valid image")
+        void analyzeImage_validImage_returns202() throws Exception {
+            when(imageAnalysisService.isAvailable()).thenReturn(true);
+            when(imageAnalysisService.analyzeImage(any(byte[].class), any(), eq(userId)))
+                    .thenReturn("test-analysis-id");
+
+            // Valid JPEG magic bytes
+            MockMultipartFile image = new MockMultipartFile("image", "test.jpg", "image/jpeg",
+                    new byte[]{(byte) 0xFF, (byte) 0xD8, (byte) 0xFF, 0, 0, 0, 0, 0, 0, 0, 0, 0});
+
+            mockMvc.perform(multipart("/api/v1/items/analyze-image").file(image)
+                            .with(user(new CustomUserDetails(userId, "test@test.com", "USER"))))
+                    .andExpect(status().isAccepted())
+                    .andExpect(jsonPath("$.data.analysisId").value("test-analysis-id"));
+        }
+
+        @Test
+        @DisplayName("should return 400 for empty image")
+        void analyzeImage_emptyImage_returns400() throws Exception {
+            when(imageAnalysisService.isAvailable()).thenReturn(true);
+
+            MockMultipartFile image = new MockMultipartFile("image", "test.jpg", "image/jpeg", new byte[0]);
+
+            mockMvc.perform(multipart("/api/v1/items/analyze-image").file(image)
+                            .with(user(new CustomUserDetails(userId, "test@test.com", "USER"))))
+                    .andExpect(status().isBadRequest());
+        }
+
+        @Test
+        @DisplayName("should return 400 for non-image content")
+        void analyzeImage_invalidContent_returns400() throws Exception {
+            when(imageAnalysisService.isAvailable()).thenReturn(true);
+
+            // Random bytes, not a valid image
+            MockMultipartFile image = new MockMultipartFile("image", "test.bin", "application/octet-stream",
+                    new byte[]{0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08, 0x09, 0x0A, 0x0B});
+
+            mockMvc.perform(multipart("/api/v1/items/analyze-image").file(image)
+                            .with(user(new CustomUserDetails(userId, "test@test.com", "USER"))))
+                    .andExpect(status().isBadRequest());
+        }
+
+        @Test
+        @DisplayName("should return 429 when rate limited")
+        void analyzeImage_rateLimited_returns429() throws Exception {
+            when(imageAnalysisService.isAvailable()).thenReturn(true);
+            when(uploadRateLimiter.tryAcquire(anyString()))
+                    .thenReturn(new ApiRateLimiter.RateLimitResult(false, 0));
+
+            MockMultipartFile image = new MockMultipartFile("image", "test.jpg", "image/jpeg",
+                    new byte[]{(byte) 0xFF, (byte) 0xD8, (byte) 0xFF, 0, 0, 0, 0, 0, 0, 0, 0, 0});
+
+            mockMvc.perform(multipart("/api/v1/items/analyze-image").file(image)
+                            .with(user(new CustomUserDetails(userId, "test@test.com", "USER"))))
+                    .andExpect(status().isTooManyRequests());
+        }
+    }
+
+    @Nested
+    @DisplayName("GET /api/v1/items/analyze-image/{analysisId}")
+    class GetAnalysisResultTests {
+
+        private final UUID userId = UUID.randomUUID();
+
+        @Test
+        @DisplayName("should return 200 with result when found")
+        void getAnalysisResult_found_returns200() throws Exception {
+            UUID analysisId = UUID.randomUUID();
+            ImageAnalysisResult result = new ImageAnalysisResult(
+                    analysisId.toString(), ImageAnalysisResult.AnalysisStatus.COMPLETED,
+                    "Blue Keyboard", "AVAILABLE", 1, null, null);
+
+            when(imageAnalysisService.getResult(analysisId.toString(), userId))
+                    .thenReturn(Optional.of(result));
+
+            mockMvc.perform(get("/api/v1/items/analyze-image/{id}", analysisId)
+                            .with(user(new CustomUserDetails(userId, "test@test.com", "USER"))))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.data.suggestedName").value("Blue Keyboard"));
+        }
+
+        @Test
+        @DisplayName("should return 404 when not found")
+        void getAnalysisResult_notFound_returns404() throws Exception {
+            UUID analysisId = UUID.randomUUID();
+            when(imageAnalysisService.getResult(analysisId.toString(), userId))
+                    .thenReturn(Optional.empty());
+
+            mockMvc.perform(get("/api/v1/items/analyze-image/{id}", analysisId)
+                            .with(user(new CustomUserDetails(userId, "test@test.com", "USER"))))
+                    .andExpect(status().isNotFound());
+        }
+
+        @Test
+        @DisplayName("should reject invalid UUID format")
+        void getAnalysisResult_invalidUUID_rejectsRequest() throws Exception {
+            mockMvc.perform(get("/api/v1/items/analyze-image/{id}", "not-a-uuid")
+                            .with(user(new CustomUserDetails(userId, "test@test.com", "USER"))))
+                    .andExpect(status().isBadRequest());
         }
     }
 }

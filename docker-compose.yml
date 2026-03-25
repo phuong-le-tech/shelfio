@@ -36,6 +36,11 @@ services:
       # Stripe (optional)
       STRIPE_SECRET_KEY: ${STRIPE_SECRET_KEY:-}
       STRIPE_WEBHOOK_SECRET: ${STRIPE_WEBHOOK_SECRET:-}
+      # AI Image Analysis (optional — set AI_PROVIDER=ollama to enable)
+      AI_PROVIDER: ${AI_PROVIDER:-noop}
+      OLLAMA_BASE_URL: ${OLLAMA_BASE_URL:-}
+      OLLAMA_MODEL: ${OLLAMA_MODEL:-gemma3:4b}
+      OLLAMA_ALLOWED_HOSTS: ${OLLAMA_ALLOWED_HOSTS:-}
       # Monitoring
       SENTRY_DSN: ${SENTRY_DSN:-}
     healthcheck:

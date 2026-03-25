@@ -9,7 +9,8 @@ import {
   ItemList,
   ItemListWithItems,
   ItemListFormData,
-  ItemListSearchParams
+  ItemListSearchParams,
+  ImageAnalysisResult,
 } from '../types/item';
 
 export const listsApi = {
@@ -105,6 +106,21 @@ export const itemsApi = {
       }
       throw error;
     }
+  },
+};
+
+export const imageAnalysisApi = {
+  analyze: async (image: File, listId?: string): Promise<{ analysisId: string }> => {
+    const formData = new FormData();
+    formData.append('image', image);
+    if (listId) formData.append('listId', listId);
+    const response = await http.post<{ analysisId: string }>('/items/analyze-image', formData);
+    return response.data;
+  },
+
+  getResult: async (analysisId: string): Promise<ImageAnalysisResult> => {
+    const response = await http.get<ImageAnalysisResult>(`/items/analyze-image/${analysisId}`);
+    return response.data;
   },
 };
 

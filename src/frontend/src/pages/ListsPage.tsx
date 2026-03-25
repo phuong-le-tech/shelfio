@@ -5,7 +5,6 @@ import { AnimatePresence } from 'motion/react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { listsApi } from '../services/api';
 import { useAuth } from '../contexts/AuthContext';
-import { useWorkspace } from '../contexts/WorkspaceContext';
 import { SkeletonCard, SkeletonText, Skeleton } from '../components/Skeleton';
 import { useToast } from '../components/Toast';
 import ConfirmModal from '../components/ConfirmModal';
@@ -46,21 +45,18 @@ export default function ListsPage() {
   const [searchQuery, setSearchQuery] = useState('');
   const { showToast } = useToast();
   const { isPremium } = useAuth();
-  const { currentWorkspace, error: workspaceError, refreshWorkspaces } = useWorkspace();
   const queryClient = useQueryClient();
 
-  const isViewer = currentWorkspace?.role === 'VIEWER';
+  const isViewer = false; // TODO: re-enable with workspace
   const params = {
     page,
     size: 9,
     sortBy: 'createdAt',
     sortDir: 'desc' as const,
-    workspaceId: currentWorkspace?.id,
   };
   const { data, isLoading: loading } = useQuery({
     queryKey: queryKeys.lists.list(params),
     queryFn: () => listsApi.getAll(params),
-    enabled: !!currentWorkspace,
   });
 
   const lists = data?.content ?? [];
@@ -98,14 +94,6 @@ export default function ListsPage() {
     deleteMutation.mutate(id);
   };
 
-  if (workspaceError) {
-    return (
-      <div className="text-center py-24">
-        <p className="text-lg text-destructive mb-4">{workspaceError}</p>
-        <Button onClick={() => refreshWorkspaces()}>Réessayer</Button>
-      </div>
-    );
-  }
 
   if (loading && lists.length === 0) {
     return (

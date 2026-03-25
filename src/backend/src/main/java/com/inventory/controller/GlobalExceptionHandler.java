@@ -32,6 +32,7 @@ import org.springframework.lang.NonNull;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
+import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
 
 @Slf4j
 @RestControllerAdvice
@@ -163,6 +164,17 @@ public class GlobalExceptionHandler {
     public ResponseEntity<ApiErrorResponse> handleImageStorage(ImageStorageException e) {
         log.error("Image storage operation failed", e);
         return buildErrorResponse(HttpStatus.BAD_GATEWAY, "Image storage service unavailable");
+    }
+
+    @ExceptionHandler(com.inventory.exception.ServiceUnavailableException.class)
+    public ResponseEntity<ApiErrorResponse> handleServiceUnavailable(
+            com.inventory.exception.ServiceUnavailableException e) {
+        return buildErrorResponse(HttpStatus.SERVICE_UNAVAILABLE, e.getMessage());
+    }
+
+    @ExceptionHandler(MethodArgumentTypeMismatchException.class)
+    public ResponseEntity<ApiErrorResponse> handleTypeMismatch(MethodArgumentTypeMismatchException e) {
+        return buildErrorResponse(HttpStatus.BAD_REQUEST, "Invalid parameter: " + e.getName());
     }
 
     @ExceptionHandler(IllegalStateException.class)

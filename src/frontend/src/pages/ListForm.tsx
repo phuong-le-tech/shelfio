@@ -9,7 +9,6 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { listsApi } from '../services/api';
 import { queryKeys } from '../lib/queryKeys';
 import { ItemListFormData, FIELD_TYPE_OPTIONS, FIELD_TYPE_LABELS, CustomFieldType } from '../types/item';
-import { useWorkspace } from '../contexts/WorkspaceContext';
 import { listFormSchema } from '../schemas/item.schemas';
 import { Skeleton, SkeletonText } from '../components/Skeleton';
 import { useToast } from '../components/Toast';
@@ -43,7 +42,6 @@ export default function ListForm() {
   const { showToast } = useToast();
 
   const queryClient = useQueryClient();
-  const { currentWorkspace } = useWorkspace();
   const [submitting, setSubmitting] = useState(false);
 
   const { register, handleSubmit, reset, control, watch, formState: { errors, isDirty } } = useForm<ItemListFormData>({
@@ -108,11 +106,7 @@ export default function ListForm() {
         showToast('Liste mise à jour avec succès', 'success');
         navigate(`/lists/${id}`);
       } else {
-        if (!currentWorkspace) {
-          showToast('Aucun espace de travail sélectionné', 'error');
-          return;
-        }
-        const newList = await listsApi.create({ ...data, workspaceId: currentWorkspace.id });
+        const newList = await listsApi.create(data);
         showToast('Liste créée avec succès', 'success');
         navigate(`/lists/${newList.id}`);
       }

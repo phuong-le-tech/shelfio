@@ -56,6 +56,12 @@ services:
       # Stripe (optional in dev)
       STRIPE_SECRET_KEY: ${STRIPE_SECRET_KEY:-}
       STRIPE_WEBHOOK_SECRET: ${STRIPE_WEBHOOK_SECRET:-}
+      # AI Image Analysis (requires Ollama running natively on the host)
+      # Setup: brew install ollama && ollama pull gemma3:4b && ollama serve
+      AI_PROVIDER: ${AI_PROVIDER:-ollama}
+      OLLAMA_BASE_URL: ${OLLAMA_BASE_URL:-http://host.docker.internal:11434}
+      OLLAMA_MODEL: ${OLLAMA_MODEL:-gemma3:4b}
+      OLLAMA_ALLOWED_HOSTS: ${OLLAMA_ALLOWED_HOSTS:-}
     depends_on:
       postgres:
         condition: service_healthy
