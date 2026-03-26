@@ -110,6 +110,11 @@ export const itemsApi = {
 };
 
 export const imageAnalysisApi = {
+  checkStatus: async (): Promise<{ available: boolean }> => {
+    const response = await http.get<{ available: boolean }>('/items/analyze-image/status');
+    return response.data;
+  },
+
   analyze: async (image: File, listId?: string): Promise<{ analysisId: string }> => {
     const formData = new FormData();
     formData.append('image', image);
