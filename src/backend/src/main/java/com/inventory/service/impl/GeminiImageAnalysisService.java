@@ -38,7 +38,7 @@ import java.util.stream.Collectors;
 @ConditionalOnProperty(name = "app.ai.provider", havingValue = "gemini")
 public class GeminiImageAnalysisService implements IImageAnalysisService {
 
-    private static final String GEMINI_API_URL = "https://generativelanguage.googleapis.com/v1beta/models/%s:generateContent?key=%s";
+    private static final String GEMINI_API_URL = "https://generativelanguage.googleapis.com/v1beta/models/%s:generateContent";
     private static final long RESULT_TTL_MINUTES = 10;
     private static final int MAX_RESULTS = 500;
     private static final Set<String> VALID_STATUSES = Set.of(
@@ -143,7 +143,7 @@ public class GeminiImageAnalysisService implements IImageAnalysisService {
         HttpEntity<Map<String, Object>> request = new HttpEntity<>(requestBody, headers);
 
         try {
-            String url = String.format(GEMINI_API_URL, model, apiKey);
+            String url = String.format(GEMINI_API_URL, model);
             log.debug("Calling Gemini API with model {}", model);
 
             var response = geminiRestTemplate.postForEntity(url, request, String.class);
