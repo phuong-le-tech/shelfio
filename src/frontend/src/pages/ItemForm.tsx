@@ -3,7 +3,7 @@ import { useNavigate, useParams, useSearchParams } from "react-router-dom";
 import { useForm, Controller } from "react-hook-form";
 import type { Resolver } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { Upload, AlertCircle, X, ScanLine } from "lucide-react";
+import { Upload, AlertCircle, X, ScanLine, Sparkles } from "lucide-react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { itemsApi, listsApi } from "../services/api";
 import { queryKeys } from "../lib/queryKeys";
@@ -64,7 +64,7 @@ export default function ItemForm() {
   >([]);
   const [selectedListName, setSelectedListName] = useState("");
   const [scannerOpen, setScannerOpen] = useState(false);
-  const { suggestions, isAnalyzing, startAnalysis, reset: resetAnalysis } = useImageAnalysis();
+  const { suggestions, isAnalyzing, isAvailable: aiAvailable, startAnalysis, reset: resetAnalysis } = useImageAnalysis();
 
   const schemaRef = useRef(createItemSchema([]));
   const resolver = useCallback<Resolver<ItemFormData>>(
@@ -189,7 +189,6 @@ export default function ItemForm() {
       if (typeof reader.result === "string") setImagePreview(reader.result);
     };
     reader.readAsDataURL(file);
-    startAnalysis(file, selectedListId || undefined);
   };
 
   const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -736,6 +735,18 @@ export default function ItemForm() {
                   </Button>
                 )}
               </label>
+              {imageFile && aiAvailable && !suggestions && !isAnalyzing && (
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  className="mt-3"
+                  onClick={() => startAnalysis(imageFile, selectedListId || undefined)}
+                >
+                  <Sparkles className="mr-2 h-4 w-4" />
+                  Analyser avec l'IA
+                </Button>
+              )}
               {(isAnalyzing || suggestions) && (
                 <div className="mt-4">
                   <ImageAnalysisSuggestions
