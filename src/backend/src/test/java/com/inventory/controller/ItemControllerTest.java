@@ -573,10 +573,10 @@ class ItemControllerTest {
         }
 
         @Test
-        @DisplayName("should return 401 or 403 when not authenticated")
+        @DisplayName("should reject unauthenticated request")
         void status_unauthenticated_returnsUnauthorized() throws Exception {
             mockMvc.perform(get("/api/v1/items/analyze-image/status"))
-                    .andExpect(status().is4xxClientError());
+                    .andExpect(status().isForbidden());
         }
     }
 }

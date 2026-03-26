@@ -79,6 +79,7 @@ export function useImageAnalysis(): UseImageAnalysisReturn {
               } else if (result.status === 'FAILED') {
                 cleanup();
                 setIsAnalyzing(false);
+                setError("L'analyse a échoué");
                 return;
               }
             } catch {
