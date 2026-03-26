@@ -42,6 +42,7 @@ import com.inventory.util.ImageContentValidator;
 import java.io.IOException;
 import java.util.Collections;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 import java.util.UUID;
@@ -190,6 +191,11 @@ public class ItemController {
     @GetMapping("/stats")
     public DashboardStats getDashboardStats() {
         return itemService.getDashboardStats();
+    }
+
+    @GetMapping("/analyze-image/status")
+    public ResponseEntity<Map<String, Boolean>> getAnalysisStatus() {
+        return ResponseEntity.ok(Map.of("available", imageAnalysisService.isAvailable()));
     }
 
     @PostMapping(value = "/analyze-image", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)

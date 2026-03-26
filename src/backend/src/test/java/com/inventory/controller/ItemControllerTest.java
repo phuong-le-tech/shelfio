@@ -545,4 +545,38 @@ class ItemControllerTest {
                     .andExpect(status().isBadRequest());
         }
     }
+
+    @Nested
+    @DisplayName("GET /api/v1/items/analyze-image/status")
+    class AnalyzeImageStatusTests {
+
+        @Test
+        @DisplayName("should return available true when AI is configured")
+        void status_aiAvailable_returnsTrue() throws Exception {
+            when(imageAnalysisService.isAvailable()).thenReturn(true);
+
+            mockMvc.perform(get("/api/v1/items/analyze-image/status")
+                            .with(user(new CustomUserDetails(UUID.randomUUID(), "test@test.com", "USER"))))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.data.available").value(true));
+        }
+
+        @Test
+        @DisplayName("should return available false when AI is not configured")
+        void status_aiUnavailable_returnsFalse() throws Exception {
+            when(imageAnalysisService.isAvailable()).thenReturn(false);
+
+            mockMvc.perform(get("/api/v1/items/analyze-image/status")
+                            .with(user(new CustomUserDetails(UUID.randomUUID(), "test@test.com", "USER"))))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.data.available").value(false));
+        }
+
+        @Test
+        @DisplayName("should return 401 or 403 when not authenticated")
+        void status_unauthenticated_returnsUnauthorized() throws Exception {
+            mockMvc.perform(get("/api/v1/items/analyze-image/status"))
+                    .andExpect(status().is4xxClientError());
+        }
+    }
 }
