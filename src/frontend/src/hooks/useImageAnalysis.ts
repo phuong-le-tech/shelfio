@@ -1,7 +1,7 @@
-import { useState, useRef, useCallback, useEffect } from 'react';
-import { imageAnalysisApi } from '../services/api';
-import { ImageAnalysisResult } from '../types/item';
-import axios from 'axios';
+import { useState, useRef, useCallback, useEffect } from "react";
+import { imageAnalysisApi } from "../services/api";
+import { ImageAnalysisResult } from "../types/item";
+import axios from "axios";
 
 const INITIAL_POLL_INTERVAL_MS = 1000;
 const MAX_POLL_INTERVAL_MS = 8000;
@@ -17,7 +17,9 @@ interface UseImageAnalysisReturn {
 }
 
 export function useImageAnalysis(): UseImageAnalysisReturn {
-  const [suggestions, setSuggestions] = useState<ImageAnalysisResult | null>(null);
+  const [suggestions, setSuggestions] = useState<ImageAnalysisResult | null>(
+    null,
+  );
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [isAvailable, setIsAvailable] = useState(false);
@@ -47,68 +49,76 @@ export function useImageAnalysis(): UseImageAnalysisReturn {
 
   // Check AI availability on mount
   useEffect(() => {
-    imageAnalysisApi.checkStatus()
+    imageAnalysisApi
+      .checkStatus()
       .then(({ available }) => setIsAvailable(available))
       .catch(() => setIsAvailable(false));
   }, []);
 
-  const startAnalysis = useCallback((file: File, listId?: string) => {
-    if (!isAvailable) return;
-    reset();
-    abortRef.current = false;
-    setIsAnalyzing(true);
+  const startAnalysis = useCallback(
+    (file: File, listId?: string) => {
+      if (!isAvailable) return;
+      reset();
+      abortRef.current = false;
+      setIsAnalyzing(true);
 
-    imageAnalysisApi.analyze(file, listId)
-      .then(({ analysisId }) => {
-        if (abortRef.current) return;
+      imageAnalysisApi
+        .analyze(file, listId)
+        .then(({ analysisId }) => {
+          if (abortRef.current) return;
 
-        // Start polling with exponential backoff
-        let currentInterval = INITIAL_POLL_INTERVAL_MS;
-        const schedulePoll = () => {
-          pollIntervalRef.current = setTimeout(async () => {
-            if (abortRef.current) return;
-            try {
-              const result = await imageAnalysisApi.getResult(analysisId);
+          // Start polling with exponential backoff
+          let currentInterval = INITIAL_POLL_INTERVAL_MS;
+          const schedulePoll = () => {
+            pollIntervalRef.current = setTimeout(async () => {
               if (abortRef.current) return;
+              try {
+                const result = await imageAnalysisApi.getResult(analysisId);
+                if (abortRef.current) return;
 
-              if (result.status === 'COMPLETED') {
-                cleanup();
-                setSuggestions(result);
-                setIsAnalyzing(false);
-                return;
-              } else if (result.status === 'FAILED') {
-                cleanup();
-                setIsAnalyzing(false);
-                setError("L'analyse a échoué");
-                return;
+                if (result.status === "COMPLETED") {
+                  cleanup();
+                  setSuggestions(result);
+                  setIsAnalyzing(false);
+                  return;
+                } else if (result.status === "FAILED") {
+                  cleanup();
+                  setIsAnalyzing(false);
+                  setError("L'analyse a échoué");
+                  return;
+                }
+              } catch {
+                // Polling error — silently ignore, will retry
               }
-            } catch {
-              // Polling error — silently ignore, will retry
-            }
-            currentInterval = Math.min(currentInterval * 2, MAX_POLL_INTERVAL_MS);
-            schedulePoll();
-          }, currentInterval);
-        };
-        schedulePoll();
+              currentInterval = Math.min(
+                currentInterval * 2,
+                MAX_POLL_INTERVAL_MS,
+              );
+              schedulePoll();
+            }, currentInterval);
+          };
+          schedulePoll();
 
-        // Timeout
-        timeoutRef.current = setTimeout(() => {
-          if (!abortRef.current) {
-            cleanup();
-            setIsAnalyzing(false);
+          // Timeout
+          timeoutRef.current = setTimeout(() => {
+            if (!abortRef.current) {
+              cleanup();
+              setIsAnalyzing(false);
+            }
+          }, POLL_TIMEOUT_MS);
+        })
+        .catch((err) => {
+          if (abortRef.current) return;
+          if (axios.isAxiosError(err) && err.response?.status === 503) {
+            setIsAvailable(false);
+          } else {
+            setError("L'analyse a échoué");
           }
-        }, POLL_TIMEOUT_MS);
-      })
-      .catch((err) => {
-        if (abortRef.current) return;
-        if (axios.isAxiosError(err) && err.response?.status === 503) {
-          setIsAvailable(false);
-        } else {
-          setError("L'analyse a échoué");
-        }
-        setIsAnalyzing(false);
-      });
-  }, [reset, cleanup, isAvailable]);
+          setIsAnalyzing(false);
+        });
+    },
+    [reset, cleanup, isAvailable],
+  );
 
   useEffect(() => {
     return cleanup;
