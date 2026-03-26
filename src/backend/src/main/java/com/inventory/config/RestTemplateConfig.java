@@ -59,4 +59,21 @@ public class RestTemplateConfig {
         factory.setReadTimeout(effectiveReadTimeout * 1_000);
         return new RestTemplate(factory);
     }
+
+    @Bean("geminiRestTemplate")
+    public RestTemplate geminiRestTemplate(
+            @Value("${app.ai.gemini.timeout-seconds:30}") int readTimeoutSeconds) {
+        int effectiveReadTimeout = Math.min(readTimeoutSeconds, MAX_READ_TIMEOUT_SECONDS);
+
+        SimpleClientHttpRequestFactory factory = new SimpleClientHttpRequestFactory() {
+            @Override
+            protected void prepareConnection(HttpURLConnection connection, String httpMethod) throws IOException {
+                super.prepareConnection(connection, httpMethod);
+                connection.setInstanceFollowRedirects(false);
+            }
+        };
+        factory.setConnectTimeout(10_000);
+        factory.setReadTimeout(effectiveReadTimeout * 1_000);
+        return new RestTemplate(factory);
+    }
 }
