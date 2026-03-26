@@ -75,6 +75,10 @@ public class GeminiImageAnalysisService implements IImageAnalysisService {
             throw new IllegalStateException(
                     "GEMINI_API_KEY is required when app.ai.provider=gemini");
         }
+        if (!model.matches("[a-zA-Z0-9._:-]+")) {
+            throw new IllegalStateException(
+                    "app.ai.gemini.model contains invalid characters: " + model);
+        }
     }
 
     @Override
@@ -126,7 +130,7 @@ public class GeminiImageAnalysisService implements IImageAnalysisService {
 
         Map<String, Object> textPart = Map.of("text", prompt);
         Map<String, Object> imagePart = Map.of("inlineData", Map.of(
-                "mimeType", "image/jpeg",
+                "mimeType", detectMimeType(imageData),
                 "data", base64Image));
         Map<String, Object> requestBody = Map.of(
                 "contents", List.of(Map.of("parts", List.of(textPart, imagePart))),
@@ -149,7 +153,10 @@ public class GeminiImageAnalysisService implements IImageAnalysisService {
 
             return parseResponse(analysisId, response.getBody());
         } catch (RestClientException e) {
-            log.error("Gemini API call failed: {}", e.getMessage());
+            String safeMsg = (e instanceof org.springframework.web.client.HttpStatusCodeException ex)
+                    ? "HTTP " + ex.getStatusCode()
+                    : e.getClass().getSimpleName();
+            log.error("Gemini API call failed for analysis {}: {}", analysisId, safeMsg);
             return ImageAnalysisResult.failed(analysisId, "AI service unavailable");
         }
     }
@@ -194,6 +201,16 @@ public class GeminiImageAnalysisService implements IImageAnalysisService {
             log.warn("Failed to parse Gemini response for analysis {}", analysisId);
             return ImageAnalysisResult.failed(analysisId, "Failed to parse AI response");
         }
+    }
+
+    private static String detectMimeType(byte[] imageData) {
+        if (imageData.length >= 4) {
+            if (imageData[0] == (byte) 0x89 && imageData[1] == 0x50) return "image/png";
+            if (imageData[0] == 0x47 && imageData[1] == 0x49) return "image/gif";
+            if (imageData.length >= 12 && imageData[0] == 0x52 && imageData[1] == 0x49
+                    && imageData[8] == 0x57 && imageData[9] == 0x45) return "image/webp";
+        }
+        return "image/jpeg";
     }
 
     private static String sanitize(String input, int maxLength) {
