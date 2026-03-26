@@ -36,11 +36,16 @@ services:
       # Stripe (optional)
       STRIPE_SECRET_KEY: ${STRIPE_SECRET_KEY:-}
       STRIPE_WEBHOOK_SECRET: ${STRIPE_WEBHOOK_SECRET:-}
-      # AI Image Analysis (optional — set AI_PROVIDER=ollama to enable)
+      # AI Image Analysis (noop = disabled, ollama = local/remote LLM, gemini = Google Gemini API)
       AI_PROVIDER: ${AI_PROVIDER:-noop}
       OLLAMA_BASE_URL: ${OLLAMA_BASE_URL:-}
       OLLAMA_MODEL: ${OLLAMA_MODEL:-gemma3:4b}
       OLLAMA_ALLOWED_HOSTS: ${OLLAMA_ALLOWED_HOSTS:-}
+      # Gemini (required only when AI_PROVIDER=gemini)
+      GEMINI_API_KEY: ${GEMINI_API_KEY:-}
+      GEMINI_MODEL: ${GEMINI_MODEL:-gemini-2.0-flash}
+      GEMINI_TIMEOUT: ${GEMINI_TIMEOUT:-30}
+      GEMINI_THREAD_POOL: ${GEMINI_THREAD_POOL:-2}
       # Monitoring
       SENTRY_DSN: ${SENTRY_DSN:-}
     healthcheck:
