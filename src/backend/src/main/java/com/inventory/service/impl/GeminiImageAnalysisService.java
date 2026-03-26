@@ -177,6 +177,7 @@ public class GeminiImageAnalysisService implements IImageAnalysisService {
             }
 
             String responseText = parts.get(0).path("text").asText("");
+
             JsonNode parsed = objectMapper.readTree(responseText);
 
             String name = sanitizeOrNull(parsed.path("name").asText(null), 255);
