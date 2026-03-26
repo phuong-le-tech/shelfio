@@ -25,7 +25,6 @@ export function useImageAnalysis(): UseImageAnalysisReturn {
   const pollIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const abortRef = useRef(false);
-  const hasAttempted = useRef(false);
 
   const cleanup = useCallback(() => {
     if (pollIntervalRef.current) {
@@ -46,18 +45,22 @@ export function useImageAnalysis(): UseImageAnalysisReturn {
     setError(null);
   }, [cleanup]);
 
+  // Check AI availability on mount
+  useEffect(() => {
+    imageAnalysisApi.checkStatus()
+      .then(({ available }) => setIsAvailable(available))
+      .catch(() => setIsAvailable(false));
+  }, []);
+
   const startAnalysis = useCallback((file: File, listId?: string) => {
-    // Once we know AI is unavailable (503), skip future attempts
-    if (isAvailable === false && hasAttempted.current) return;
+    if (!isAvailable) return;
     reset();
     abortRef.current = false;
-    hasAttempted.current = true;
     setIsAnalyzing(true);
 
     imageAnalysisApi.analyze(file, listId)
       .then(({ analysisId }) => {
         if (abortRef.current) return;
-        setIsAvailable(true);
 
         // Start polling with exponential backoff
         let currentInterval = INITIAL_POLL_INTERVAL_MS;
@@ -76,7 +79,6 @@ export function useImageAnalysis(): UseImageAnalysisReturn {
               } else if (result.status === 'FAILED') {
                 cleanup();
                 setIsAnalyzing(false);
-                setIsAvailable(false);
                 return;
               }
             } catch {
