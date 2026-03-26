@@ -38,7 +38,7 @@ import java.util.stream.Collectors;
 @ConditionalOnProperty(name = "app.ai.provider", havingValue = "gemini")
 public class GeminiImageAnalysisService implements IImageAnalysisService {
 
-    private static final String GEMINI_API_URL = "https://generativelanguage.googleapis.com/v1beta/models/%s:generateContent?key=%s";
+    private static final String GEMINI_API_URL = "https://generativelanguage.googleapis.com/v1beta/models/%s:generateContent";
     private static final long RESULT_TTL_MINUTES = 10;
     private static final int MAX_RESULTS = 500;
     private static final Set<String> VALID_STATUSES = Set.of(
@@ -134,10 +134,11 @@ public class GeminiImageAnalysisService implements IImageAnalysisService {
 
         HttpHeaders headers = new HttpHeaders();
         headers.setContentType(MediaType.APPLICATION_JSON);
+        headers.set("x-goog-api-key", apiKey);
         HttpEntity<Map<String, Object>> request = new HttpEntity<>(requestBody, headers);
 
         try {
-            String url = String.format(GEMINI_API_URL, model, apiKey);
+            String url = String.format(GEMINI_API_URL, model);
             log.debug("Calling Gemini API with model {}", model);
 
             var response = geminiRestTemplate.postForEntity(url, request, String.class);
@@ -162,13 +163,12 @@ public class GeminiImageAnalysisService implements IImageAnalysisService {
                 return ImageAnalysisResult.failed(analysisId, "No candidates in Gemini response");
             }
 
-            String responseText = candidates.get(0)
-                    .path("content")
-                    .path("parts")
-                    .get(0)
-                    .path("text")
-                    .asText("");
+            JsonNode parts = candidates.get(0).path("content").path("parts");
+            if (!parts.isArray() || parts.isEmpty()) {
+                return ImageAnalysisResult.failed(analysisId, "Unexpected Gemini response structure");
+            }
 
+            String responseText = parts.get(0).path("text").asText("");
             JsonNode parsed = objectMapper.readTree(responseText);
 
             String name = sanitizeOrNull(parsed.path("name").asText(null), 255);
@@ -190,7 +190,7 @@ public class GeminiImageAnalysisService implements IImageAnalysisService {
             return new ImageAnalysisResult(analysisId, AnalysisStatus.COMPLETED,
                     name, status, stock, customFields, null);
 
-        } catch (JsonProcessingException | NullPointerException e) {
+        } catch (JsonProcessingException e) {
             log.warn("Failed to parse Gemini response for analysis {}", analysisId);
             return ImageAnalysisResult.failed(analysisId, "Failed to parse AI response");
         }
