@@ -138,7 +138,7 @@ public class GeminiImageAnalysisService implements IImageAnalysisService {
 
         HttpHeaders headers = new HttpHeaders();
         headers.setContentType(MediaType.APPLICATION_JSON);
-        headers.set("x-goog-api-key", apiKey);
+        headers.set("x-goog-api-key", Objects.requireNonNull(apiKey));
         HttpEntity<Map<String, Object>> request = new HttpEntity<>(requestBody, headers);
 
         try {
@@ -176,6 +176,7 @@ public class GeminiImageAnalysisService implements IImageAnalysisService {
             }
 
             String responseText = parts.get(0).path("text").asText("");
+
             JsonNode parsed = objectMapper.readTree(responseText);
 
             String name = sanitizeOrNull(parsed.path("name").asText(null), 255);
