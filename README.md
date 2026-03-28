@@ -6,9 +6,13 @@ A full-stack inventory management application that lets users organize items int
 
 - **Authentication** — Email/password login with JWT tokens stored in HTTP-only cookies, optional Google OAuth2, email verification, password reset
 - **Dashboard** — Overview with inventory statistics (total items, status breakdown, category counts)
-- **Item Lists** — Create and manage custom lists to organize inventory, with custom field definitions per list
+- **Item Lists** — Create and manage custom lists to organize inventory, with custom field definitions per list (TEXT, NUMBER, DATE, BOOLEAN)
 - **Items** — Add, edit, and delete items with image upload, status tracking, search/filtering, and barcode/QR code scanning via device camera
-- **Admin Panel** — User management for admin-role users
+- **AI Image Analysis** — Analyze item images with Google Gemini to auto-suggest name, status, stock, and custom field values
+- **Premium Upgrade** — Free users limited to 5 lists; one-time €2 Stripe Checkout payment to unlock unlimited lists
+- **Image Storage** — Item images stored in Cloudflare R2 (production) or in-database (dev)
+- **Admin Panel** — User management, global stats, and list/item browsing for admin-role users
+- **Error Monitoring** — Optional Sentry integration for backend and frontend
 - **Responsive UI** — Sidebar navigation with a modern, animated interface
 
 ## Tech Stack
@@ -21,7 +25,13 @@ A full-stack inventory management application that lets users organize items int
 | **Frontend**    | React 18, TypeScript, Vite 7, TailwindCSS, Radix UI, React Hook Form, Zod  |
 | **Animations**  | Motion (Framer Motion)                                                     |
 | **HTTP Client** | Axios                                                                      |
+| **Payments**    | Stripe Checkout (server-side session)                                      |
+| **AI**          | Google Gemini (image analysis)                                             |
+| **Storage**     | Cloudflare R2 (images)                                                     |
+| **Email**       | Resend API                                                                 |
+| **Monitoring**  | Sentry (optional)                                                          |
 | **Containers**  | Docker, Docker Compose                                                     |
+| **Testing**     | JUnit 5, Mockito, AssertJ (backend); Vitest (frontend)                     |
 | **API Testing** | Bruno (collection in `inventory_api_request/`)                             |
 
 ## Project Structure
@@ -114,22 +124,45 @@ The dev server starts on **http://localhost:5173** and automatically proxies `/a
 
 Copy `.env.example` to `.env.dev` and fill in the values. Key variables:
 
-| Variable                 | Required | Default                                       | Description                                              |
-| ------------------------ | -------- | --------------------------------------------- | -------------------------------------------------------- |
-| `DB_HOST`                | Yes      | `localhost`                                   | PostgreSQL host                                          |
-| `DB_PORT`                | No       | `5432`                                        | PostgreSQL port                                          |
-| `DB_NAME`                | Yes      | `inventory`                                   | Database name                                            |
-| `DB_USERNAME`            | Yes      | `postgres`                                    | Database user                                            |
-| `DB_PASSWORD`            | Yes      | `postgres`                                    | Database password                                        |
-| `SPRING_PROFILES_ACTIVE` | No       | `dev`                                         | Spring profile (`dev`, `prod`)                           |
-| `CORS_ALLOWED_ORIGINS`   | No       | `http://localhost:5173,http://localhost:3000` | CORS allowed origins (comma-separated)                   |
-| `JWT_SECRET`             | Yes      | _(dev key)_                                   | Secret for signing JWT tokens (min 32 chars)             |
-| `JWT_EXPIRATION_MS`      | No       | `86400000` (24 h)                             | JWT token lifetime in milliseconds                       |
-| `COOKIE_SECURE`          | No       | `false`                                       | Set `true` in production (HTTPS)                         |
-| `FRONTEND_URL`           | No       | `http://localhost:5173`                       | Frontend URL for email links                             |
-| `GOOGLE_CLIENT_ID`       | No       | —                                             | Google OAuth2 client ID (optional)                       |
-| `EMAIL_PROVIDER`         | No       | `noop`                                        | Email provider (`noop` = console, `resend` = Resend API) |
-| `EMAIL_FROM`             | No       | `noreply@example.com`                         | Sender email address                                     |
-| `RESEND_API_KEY`         | No       | —                                             | Resend API key (required when `EMAIL_PROVIDER=resend`)   |
-| `SENTRY_DSN`             | No       | —                                             | Backend Sentry DSN (optional, leave empty to disable)    |
-| `VITE_SENTRY_DSN`        | No       | —                                             | Frontend Sentry DSN (optional, bundled into JS)          |
+| Variable | Required | Default | Description |
+|---|---|---|---|
+| **Database** | | | |
+| `DB_HOST` | Yes | `localhost` | PostgreSQL host |
+| `DB_PORT` | No | `5432` | PostgreSQL port |
+| `DB_NAME` | Yes | `inventory` | Database name |
+| `DB_USERNAME` | Yes | `postgres` | Database user |
+| `DB_PASSWORD` | Yes | `postgres` | Database password |
+| **Application** | | | |
+| `SPRING_PROFILES_ACTIVE` | No | `dev` | Spring profile (`dev`, `prod`) |
+| `CORS_ALLOWED_ORIGINS` | No | `http://localhost:5173,http://localhost:3000` | CORS allowed origins (comma-separated) |
+| `FRONTEND_URL` | No | `http://localhost:5173` | Frontend URL for email links |
+| **Authentication** | | | |
+| `JWT_SECRET` | Yes | _(dev key)_ | Secret for signing JWT tokens (min 32 chars) |
+| `JWT_EXPIRATION_MS` | No | `86400000` (24h) | JWT token lifetime in milliseconds |
+| `COOKIE_SECURE` | No | `false` | Set `true` in production (HTTPS) |
+| `GOOGLE_CLIENT_ID` | No | — | Google OAuth2 client ID |
+| `GOOGLE_CLIENT_SECRET` | No | — | Google OAuth2 client secret |
+| **Email** | | | |
+| `EMAIL_PROVIDER` | No | `noop` | `noop` = console log, `resend` = Resend API |
+| `EMAIL_FROM` | No | `noreply@example.com` | Sender email (must match Resend verified domain) |
+| `RESEND_API_KEY` | No | — | Required when `EMAIL_PROVIDER=resend` |
+| **Premium / Stripe** | | | |
+| `PREMIUM_ENABLED` | No | `true` | Enable Stripe checkout and list limits |
+| `STRIPE_SECRET_KEY` | No | — | Stripe secret key (required in prod) |
+| `STRIPE_WEBHOOK_SECRET` | No | — | Stripe webhook signing secret |
+| **Image Storage** | | | |
+| `STORAGE_PROVIDER` | No | `noop` | `noop` = in-database, `r2` = Cloudflare R2 |
+| `R2_ENDPOINT` | No | — | Cloudflare R2 endpoint URL |
+| `R2_ACCESS_KEY` | No | — | R2 access key ID |
+| `R2_SECRET_KEY` | No | — | R2 secret access key |
+| `R2_BUCKET` | No | — | R2 bucket name |
+| **AI Image Analysis** | | | |
+| `AI_PROVIDER` | No | `noop` | `noop` = disabled, `ollama` = local, `gemini` = Google |
+| `GEMINI_API_KEY` | No | — | Required when `AI_PROVIDER=gemini` |
+| `GEMINI_MODEL` | No | `gemini-2.5-flash` | Gemini model name |
+| `GEMINI_TIMEOUT` | No | `30` | API timeout in seconds |
+| **Monitoring** | | | |
+| `SENTRY_DSN` | No | — | Backend Sentry DSN (leave empty to disable) |
+| `VITE_SENTRY_DSN` | No | — | Frontend Sentry DSN (bundled into JS) |
+
+See [docs/EXTERNAL-SERVICES.md](docs/EXTERNAL-SERVICES.md) for dashboard links and monitoring guides for all third-party services.
