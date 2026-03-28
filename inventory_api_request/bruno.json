@@ -1,9 +1,0 @@
-{
-  "version": "1",
-  "name": "inventory_api_request",
-  "type": "collection",
-  "ignore": [
-    "node_modules",
-    ".git"
-  ]
-}
