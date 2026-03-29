@@ -44,6 +44,7 @@ import { cn } from "@/lib/utils";
 import { sanitizeImageUrl } from "../utils/imageUtils";
 import { queryKeys } from "../lib/queryKeys";
 import { Breadcrumb } from "../components/Breadcrumb";
+import { useWorkspace } from "../contexts/WorkspaceContext";
 
 const ITEMS_PER_PAGE = 12;
 
@@ -52,6 +53,8 @@ export default function ListDetail() {
   const navigate = useNavigate();
   const { showToast } = useToast();
   const queryClient = useQueryClient();
+  const { currentWorkspace } = useWorkspace();
+  const isViewer = currentWorkspace?.role === 'VIEWER';
 
   const [pendingDeleteId, setPendingDeleteId] = useState<string | null>(null);
   const [statusFilter, setStatusFilter] = useState<ItemStatus | "">("");
@@ -223,12 +226,14 @@ export default function ListDetail() {
             )}
           </div>
           <div className="flex gap-2 flex-shrink-0">
-            <Button variant="outline" asChild>
-              <Link to={`/lists/${id}/edit`}>
-                <Pencil className="h-4 w-4 mr-1.5" />
-                Modifier
-              </Link>
-            </Button>
+            {!isViewer && (
+              <Button variant="outline" asChild>
+                <Link to={`/lists/${id}/edit`}>
+                  <Pencil className="h-4 w-4 mr-1.5" />
+                  Modifier
+                </Link>
+              </Button>
+            )}
             <Button
               variant="outline"
               onClick={handleExportCsv}
@@ -244,12 +249,14 @@ export default function ListDetail() {
               <ScanLine className="h-4 w-4 mr-1.5" />
               Scanner
             </Button>
-            <Button asChild>
-              <Link to={`/lists/${id}/items/new`}>
-                <Plus className="h-4 w-4 mr-1.5" />
-                Ajouter article
-              </Link>
-            </Button>
+            {!isViewer && (
+              <Button asChild>
+                <Link to={`/lists/${id}/items/new`}>
+                  <Plus className="h-4 w-4 mr-1.5" />
+                  Ajouter article
+                </Link>
+              </Button>
+            )}
           </div>
         </div>
       </div>
@@ -327,6 +334,7 @@ export default function ListDetail() {
                         {formatStatus(item.status)}
                       </Badge>
                     </div>
+                    {!isViewer && (
                     <div className="absolute top-3 left-3 opacity-100 md:opacity-0 md:group-hover:opacity-100 md:focus-within:opacity-100 transition-opacity">
                       <DropdownMenu>
                         <DropdownMenuTrigger asChild>
@@ -359,6 +367,7 @@ export default function ListDetail() {
                         </DropdownMenuContent>
                       </DropdownMenu>
                     </div>
+                    )}
                   </div>
 
                   <Link

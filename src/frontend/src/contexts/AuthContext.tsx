@@ -1,4 +1,5 @@
 import { createContext, useContext, useState, useEffect, useCallback, ReactNode } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
 import { User, LoginCredentials, SignupCredentials, isPremium as checkPremium } from '../types/auth';
 import { authApi } from '../services/authApi';
 
@@ -20,6 +21,7 @@ interface AuthContextType {
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export function AuthProvider({ children }: { children: ReactNode }) {
+  const queryClient = useQueryClient();
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
 
@@ -55,11 +57,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const logout = async () => {
     await authApi.logout();
+    queryClient.clear();
     setUser(null);
   };
 
   const deleteAccount = async () => {
     await authApi.deleteAccount();
+    queryClient.clear();
     setUser(null);
   };
 

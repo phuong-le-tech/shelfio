@@ -5,6 +5,7 @@ import { AnimatePresence } from 'motion/react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { listsApi } from '../services/api';
 import { useAuth } from '../contexts/AuthContext';
+import { useWorkspace } from '../contexts/WorkspaceContext';
 import { SkeletonCard, SkeletonText, Skeleton } from '../components/Skeleton';
 import { useToast } from '../components/Toast';
 import ConfirmModal from '../components/ConfirmModal';
@@ -47,7 +48,8 @@ export default function ListsPage() {
   const { isPremium } = useAuth();
   const queryClient = useQueryClient();
 
-  const isViewer = false; // TODO: re-enable with workspace
+  const { currentWorkspace } = useWorkspace();
+  const isViewer = currentWorkspace?.role === 'VIEWER';
   const params = {
     page,
     size: 9,
