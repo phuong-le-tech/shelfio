@@ -1,10 +1,10 @@
-import { useState, useEffect } from 'react';
-import { Link } from 'react-router-dom';
-import { ChevronsUpDown, Plus, Settings, Check } from 'lucide-react';
-import { useWorkspace } from '../contexts/WorkspaceContext';
-import { useAuth } from '../contexts/AuthContext';
-import { WORKSPACE_ROLE_LABELS } from '../types/workspace';
-import { cn } from '@/lib/utils';
+import { useState, useEffect } from "react";
+import { Link } from "react-router-dom";
+import { ChevronsUpDown, Plus, Settings, Check } from "lucide-react";
+import { useWorkspace } from "../contexts/WorkspaceContext";
+import { useAuth } from "../contexts/AuthContext";
+import { WORKSPACE_ROLE_LABELS } from "../types/workspace";
+import { cn } from "@/lib/utils";
 
 export function WorkspaceSwitcher() {
   const { workspaces, currentWorkspace, setCurrentWorkspace } = useWorkspace();
@@ -14,16 +14,21 @@ export function WorkspaceSwitcher() {
   useEffect(() => {
     if (!open) return;
     const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') setOpen(false);
+      if (e.key === "Escape") setOpen(false);
     };
-    document.addEventListener('keydown', handleKeyDown);
-    return () => document.removeEventListener('keydown', handleKeyDown);
+    document.addEventListener("keydown", handleKeyDown);
+    return () => document.removeEventListener("keydown", handleKeyDown);
   }, [open]);
 
   if (!currentWorkspace) return null;
 
   return (
     <div className="relative px-3 pb-2">
+      <div className="px-3 pb-1.5">
+        <span className="text-[11px] font-semibold tracking-[0.5px] text-[hsl(var(--text-tertiary))]">
+          Workspace
+        </span>
+      </div>
       <button
         onClick={() => setOpen(!open)}
         aria-expanded={open}
@@ -40,10 +45,16 @@ export function WorkspaceSwitcher() {
             role="presentation"
             className="fixed inset-0 z-40"
             onClick={() => setOpen(false)}
-            onKeyDown={(e) => { if (e.key === 'Escape') setOpen(false); }}
+            onKeyDown={(e) => {
+              if (e.key === "Escape") setOpen(false);
+            }}
           />
           <div className="absolute left-3 right-3 top-full mt-1 z-50 bg-popover border rounded-lg shadow-lg overflow-hidden">
-            <div role="listbox" aria-label="Espaces de travail" className="p-1 max-h-64 overflow-y-auto">
+            <div
+              role="listbox"
+              aria-label="Espaces de travail"
+              className="p-1 max-h-64 overflow-y-auto"
+            >
               {workspaces.map((workspace) => (
                 <button
                   key={workspace.id}
@@ -54,14 +65,16 @@ export function WorkspaceSwitcher() {
                     setOpen(false);
                   }}
                   className={cn(
-                    'flex items-center justify-between w-full px-3 py-2 text-sm rounded-md transition-colors',
+                    "flex items-center justify-between w-full px-3 py-2 text-sm rounded-md transition-colors",
                     workspace.id === currentWorkspace.id
-                      ? 'bg-accent text-accent-foreground'
-                      : 'hover:bg-muted/50',
+                      ? "bg-accent text-accent-foreground"
+                      : "hover:bg-muted/50",
                   )}
                 >
                   <div className="flex flex-col items-start min-w-0">
-                    <span className="truncate w-full text-left">{workspace.name}</span>
+                    <span className="truncate w-full text-left">
+                      {workspace.name}
+                    </span>
                     <span className="text-[11px] text-muted-foreground">
                       {WORKSPACE_ROLE_LABELS[workspace.role]}
                     </span>

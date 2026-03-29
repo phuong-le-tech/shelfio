@@ -7,6 +7,7 @@ import App from "./App";
 import { ErrorBoundary } from "./components/ErrorBoundary";
 import { ToastProvider } from "./components/Toast";
 import { AuthProvider } from "./contexts/AuthContext";
+import { WorkspaceProvider } from "./contexts/WorkspaceContext";
 import { queryClient } from "./lib/queryClient";
 import * as Sentry from "@sentry/react";
 import "./index.css";
@@ -27,7 +28,9 @@ const appContent = (
     <QueryClientProvider client={queryClient}>
       <AuthProvider>
         <ToastProvider>
-          <App />
+          <WorkspaceProvider>
+            <App />
+          </WorkspaceProvider>
         </ToastProvider>
       </AuthProvider>
     </QueryClientProvider>

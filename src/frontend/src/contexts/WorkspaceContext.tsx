@@ -4,11 +4,14 @@ import {
   useState,
   useEffect,
   useCallback,
+  useRef,
   type ReactNode,
 } from 'react';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import type { Workspace, WorkspaceInvitation } from '../types/workspace';
 import { workspaceApi } from '../services/workspaceApi';
 import { useAuth } from './AuthContext';
+import { queryKeys } from '../lib/queryKeys';
 
 interface WorkspaceContextType {
   workspaces: Workspace[];
@@ -27,62 +30,60 @@ const STORAGE_KEY = 'shelfio_current_workspace';
 
 export function WorkspaceProvider({ children }: { children: ReactNode }) {
   const { user } = useAuth();
-  const [workspaces, setWorkspaces] = useState<Workspace[]>([]);
+  const queryClient = useQueryClient();
   const [currentWorkspace, setCurrentWorkspaceState] = useState<Workspace | null>(null);
-  const [pendingInvitations, setPendingInvitations] = useState<WorkspaceInvitation[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
 
-  const fetchWorkspaces = useCallback(async () => {
-    if (!user) {
-      setWorkspaces([]);
-      setCurrentWorkspaceState(null);
-      localStorage.removeItem(STORAGE_KEY);
-      setLoading(false);
-      setError(null);
-      return;
-    }
+  const {
+    data: workspaces = [],
+    isLoading,
+    error: workspacesError,
+  } = useQuery({
+    queryKey: queryKeys.workspaces.list(),
+    queryFn: ({ signal }) => workspaceApi.getAll(signal),
+    enabled: !!user,
+  });
 
-    try {
-      setError(null);
-      const data = await workspaceApi.getAll();
-      setWorkspaces(data);
+  const { data: pendingInvitations = [] } = useQuery({
+    queryKey: queryKeys.workspaces.pendingInvitations(),
+    queryFn: ({ signal }) => workspaceApi.getPendingInvitations(signal),
+    enabled: !!user,
+  });
 
-      // Restore last selected workspace from localStorage
-      const savedId = localStorage.getItem(STORAGE_KEY);
-      const saved = savedId ? data.find((w) => w.id === savedId) : null;
-      const defaultWorkspace = saved || data.find((w) => w.isDefault) || data[0] || null;
-      setCurrentWorkspaceState(defaultWorkspace);
-    } catch (err) {
-      console.error('Failed to fetch workspaces:', err);
-      setError('Impossible de charger les espaces de travail. Veuillez réessayer.');
-      setWorkspaces([]);
-      setCurrentWorkspaceState(null);
-    } finally {
-      setLoading(false);
-    }
-  }, [user]);
+  // Track previous user to detect logout (not initial null)
+  const prevUserRef = useRef(user);
 
-  const fetchInvitations = useCallback(async () => {
-    if (!user) {
-      setPendingInvitations([]);
-      return;
-    }
-    try {
-      const data = await workspaceApi.getPendingInvitations();
-      setPendingInvitations(data);
-    } catch (err) {
-      console.error('Failed to fetch invitations:', err);
-      setPendingInvitations([]);
-    }
-  }, [user]);
-
+  // Single effect: derive currentWorkspace from user + workspaces.
+  // Handles both data updates and logout cleanup.
   useEffect(() => {
-    // TODO: Re-enable when workspace backend is ready
-    // fetchWorkspaces();
-    // fetchInvitations();
-    setLoading(false);
-  }, [fetchWorkspaces, fetchInvitations]);
+    const wasLoggedIn = prevUserRef.current !== null;
+    prevUserRef.current = user;
+
+    // Logout: clear state only if user was previously logged in
+    if (!user) {
+      setCurrentWorkspaceState(null);
+      if (wasLoggedIn) {
+        localStorage.removeItem(STORAGE_KEY);
+      }
+      return;
+    }
+
+    if (workspaces.length === 0) {
+      setCurrentWorkspaceState(null);
+      return;
+    }
+
+    setCurrentWorkspaceState((prev) => {
+      // Keep current selection if still valid, update object reference
+      if (prev) {
+        const updated = workspaces.find((w) => w.id === prev.id);
+        if (updated) return updated;
+      }
+      // Restore from localStorage or pick default
+      const savedId = localStorage.getItem(STORAGE_KEY);
+      const saved = savedId ? workspaces.find((w) => w.id === savedId) : null;
+      return saved || workspaces.find((w) => w.isDefault) || workspaces[0] || null;
+    });
+  }, [workspaces, user]);
 
   const setCurrentWorkspace = useCallback(
     (id: string) => {
@@ -95,15 +96,25 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
     [workspaces],
   );
 
+  const refreshWorkspaces = useCallback(async () => {
+    await queryClient.refetchQueries({ queryKey: queryKeys.workspaces.list() });
+  }, [queryClient]);
+
+  const refreshInvitations = useCallback(async () => {
+    await queryClient.refetchQueries({ queryKey: queryKeys.workspaces.pendingInvitations() });
+  }, [queryClient]);
+
   const value: WorkspaceContextType = {
     workspaces,
     currentWorkspace,
     setCurrentWorkspace,
-    refreshWorkspaces: fetchWorkspaces,
+    refreshWorkspaces,
     pendingInvitations,
-    refreshInvitations: fetchInvitations,
-    loading,
-    error,
+    refreshInvitations,
+    loading: isLoading,
+    error: workspacesError
+      ? 'Impossible de charger les espaces de travail. Veuillez réessayer.'
+      : null,
   };
 
   return <WorkspaceContext.Provider value={value}>{children}</WorkspaceContext.Provider>;
