@@ -51,7 +51,7 @@ export function WorkspaceSwitcher() {
           />
           <div className="absolute left-3 right-3 top-full mt-1 z-50 bg-popover border rounded-lg shadow-lg overflow-hidden">
             <div
-              role="menu"
+              role="listbox"
               aria-label="Espaces de travail"
               className="p-1 max-h-64 overflow-y-auto"
             >
