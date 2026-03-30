@@ -16,6 +16,7 @@ import {
 import type { LucideIcon } from 'lucide-react';
 import FocusTrap from 'focus-trap-react';
 import { UserMenu } from './UserMenu';
+import { ThemeToggle } from './ThemeToggle';
 import { WorkspaceSwitcher } from './WorkspaceSwitcher';
 import { InvitationBanner } from './InvitationBanner';
 import { GlobalSearch, SearchTrigger } from './GlobalSearch';
@@ -223,6 +224,7 @@ export default function Layout({ children }: LayoutProps) {
               </Link>
             )}
             <div className="h-px bg-border" />
+            <ThemeToggle />
             <UserMenu />
           </div>
         </aside>
