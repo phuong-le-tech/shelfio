@@ -32,7 +32,7 @@ export function WorkspaceSwitcher() {
       <button
         onClick={() => setOpen(!open)}
         aria-expanded={open}
-        aria-haspopup="listbox"
+        aria-haspopup="menu"
         className="flex items-center justify-between w-full px-3 py-2 text-sm font-medium rounded-[10px] bg-muted/50 hover:bg-muted transition-colors"
       >
         <span className="truncate">{currentWorkspace.name}</span>
@@ -51,15 +51,15 @@ export function WorkspaceSwitcher() {
           />
           <div className="absolute left-3 right-3 top-full mt-1 z-50 bg-popover border rounded-lg shadow-lg overflow-hidden">
             <div
-              role="listbox"
+              role="menu"
               aria-label="Espaces de travail"
               className="p-1 max-h-64 overflow-y-auto"
             >
               {workspaces.map((workspace) => (
                 <button
                   key={workspace.id}
-                  role="option"
-                  aria-selected={workspace.id === currentWorkspace.id}
+                  role="menuitemradio"
+                  aria-checked={workspace.id === currentWorkspace.id}
                   onClick={() => {
                     setCurrentWorkspace(workspace.id);
                     setOpen(false);
