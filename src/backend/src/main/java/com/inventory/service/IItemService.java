@@ -12,6 +12,7 @@ import org.springframework.web.multipart.MultipartFile;
 import org.springframework.lang.NonNull;
 
 import java.io.IOException;
+import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -33,4 +34,6 @@ public interface IItemService {
     Item updateItem(@NonNull UUID id, ItemRequest request, MultipartFile image) throws IOException;
 
     void deleteItem(@NonNull UUID id);
+
+    void deleteItems(@NonNull List<UUID> ids);
 }

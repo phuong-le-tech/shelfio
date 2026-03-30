@@ -401,6 +401,57 @@ class ItemControllerTest {
     }
 
     @Nested
+    @DisplayName("POST /api/v1/items/bulk-delete")
+    class BulkDeleteItemsTests {
+
+        @Test
+        @DisplayName("should delete items and return 204")
+        void bulkDeleteItems_validIds_returns204() throws Exception {
+            List<UUID> ids = List.of(UUID.randomUUID(), UUID.randomUUID());
+            doNothing().when(itemService).deleteItems(ids);
+
+            mockMvc.perform(post("/api/v1/items/bulk-delete")
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(objectMapper.writeValueAsString(Map.of("ids", ids)))
+                            .with(user(new CustomUserDetails(UUID.randomUUID(), "test@test.com", "USER"))))
+                    .andExpect(status().isNoContent());
+        }
+
+        @Test
+        @DisplayName("should return 400 when ids list is empty")
+        void bulkDeleteItems_emptyIds_returns400() throws Exception {
+            mockMvc.perform(post("/api/v1/items/bulk-delete")
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(objectMapper.writeValueAsString(Map.of("ids", List.of())))
+                            .with(user(new CustomUserDetails(UUID.randomUUID(), "test@test.com", "USER"))))
+                    .andExpect(status().isBadRequest());
+        }
+
+        @Test
+        @DisplayName("should return 400 when ids list exceeds 100 items")
+        void bulkDeleteItems_tooManyIds_returns400() throws Exception {
+            List<UUID> ids = java.util.stream.IntStream.range(0, 101)
+                    .mapToObj(i -> UUID.randomUUID())
+                    .toList();
+
+            mockMvc.perform(post("/api/v1/items/bulk-delete")
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(objectMapper.writeValueAsString(Map.of("ids", ids)))
+                            .with(user(new CustomUserDetails(UUID.randomUUID(), "test@test.com", "USER"))))
+                    .andExpect(status().isBadRequest());
+        }
+
+        @Test
+        @DisplayName("should return 403 when unauthenticated")
+        void bulkDeleteItems_unauthenticated_returns403() throws Exception {
+            mockMvc.perform(post("/api/v1/items/bulk-delete")
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(objectMapper.writeValueAsString(Map.of("ids", List.of(UUID.randomUUID())))))
+                    .andExpect(status().isForbidden());
+        }
+    }
+
+    @Nested
     @DisplayName("GET /api/v1/items/stats")
     class GetDashboardStatsTests {
 
