@@ -10,6 +10,7 @@ import {
   MoreHorizontal,
   Download,
   ScanLine,
+  Check,
 } from "lucide-react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { listsApi, itemsApi } from "../services/api";
@@ -61,6 +62,9 @@ export default function ListDetail() {
   const [itemPage, setItemPage] = useState(0);
   const [isExporting, setIsExporting] = useState(false);
   const [scannerOpen, setScannerOpen] = useState(false);
+  const [selectMode, setSelectMode] = useState(false);
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [bulkDeleteConfirmOpen, setBulkDeleteConfirmOpen] = useState(false);
 
   const { data: list, isLoading: listLoading, error: listError } = useQuery({
     queryKey: queryKeys.lists.detail(id!),
@@ -107,9 +111,27 @@ export default function ListDetail() {
     },
   });
 
+  const bulkDeleteMutation = useMutation({
+    mutationFn: (ids: string[]) => itemsApi.bulkDelete(ids),
+    onSuccess: () => {
+      const count = selectedIds.size;
+      showToast(`${count} article${count !== 1 ? "s" : ""} supprimé${count !== 1 ? "s" : ""}`, "success");
+      setSelectedIds(new Set());
+      setSelectMode(false);
+      queryClient.invalidateQueries({ queryKey: queryKeys.items.all });
+      queryClient.invalidateQueries({ queryKey: queryKeys.lists.detail(id!) });
+      queryClient.invalidateQueries({ queryKey: queryKeys.dashboard.all });
+    },
+    onError: () => {
+      showToast("Échec de la suppression", "error");
+    },
+  });
+
   const handleStatusFilterChange = (value: string) => {
     setStatusFilter(value as ItemStatus | "");
     setItemPage(0);
+    setSelectMode(false);
+    setSelectedIds(new Set());
   };
 
   const handleDeleteConfirm = () => {
@@ -117,6 +139,46 @@ export default function ListDetail() {
     const itemId = pendingDeleteId;
     setPendingDeleteId(null);
     deleteMutation.mutate(itemId);
+  };
+
+  const toggleSelect = (itemId: string) => {
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(itemId)) {
+        next.delete(itemId);
+      } else {
+        next.add(itemId);
+      }
+      return next;
+    });
+  };
+
+  const toggleSelectAll = () => {
+    if (selectedIds.size === items.length && items.length > 0) {
+      setSelectedIds(new Set());
+    } else {
+      setSelectedIds(new Set(items.map((item) => item.id)));
+    }
+  };
+
+  const exitSelectMode = () => {
+    setSelectMode(false);
+    setSelectedIds(new Set());
+  };
+
+  const buildBulkDeleteMessage = () => {
+    const count = selectedIds.size;
+    const selectedItems = items.filter((item) => selectedIds.has(item.id));
+    const names = selectedItems.map((item) => item.name);
+    const preview = names.length <= 5
+      ? names.map((n) => `• ${n}`).join("\n")
+      : [...names.slice(0, 5).map((n) => `• ${n}`), `• et ${names.length - 5} autre${names.length - 5 !== 1 ? "s" : ""}`].join("\n");
+    return `Êtes-vous sûr de vouloir supprimer ${count} article${count !== 1 ? "s" : ""} ? Cette action est irréversible.\n\n${preview}`;
+  };
+
+  const handleBulkDeleteConfirm = () => {
+    setBulkDeleteConfirmOpen(false);
+    bulkDeleteMutation.mutate(Array.from(selectedIds));
   };
 
   const handleBarcodeScan = async (barcode: string) => {
@@ -197,6 +259,8 @@ export default function ListDetail() {
     );
   }
 
+  const allOnPageSelected = items.length > 0 && selectedIds.size === items.length;
+
   return (
     <div className="max-w-7xl mx-auto animate-fade-in">
       <Breadcrumb items={[{ label: 'Mes Listes', href: '/lists' }, { label: list.name }]} />
@@ -225,7 +289,7 @@ export default function ListDetail() {
               </BlurFade>
             )}
           </div>
-          <div className="flex gap-2 flex-shrink-0">
+          <div className="flex gap-2 flex-shrink-0 flex-wrap">
             {!isViewer && (
               <Button variant="outline" asChild>
                 <Link to={`/lists/${id}/edit`}>
@@ -294,11 +358,43 @@ export default function ListDetail() {
             </button>
           ))}
         </div>
-        <p className="text-sm text-muted-foreground shrink-0">
-          {itemsLoading
-            ? "..."
-            : `${itemTotalElements} article${itemTotalElements !== 1 ? "s" : ""}`}
-        </p>
+        <div className="flex items-center gap-3 shrink-0">
+          <p className="text-sm text-muted-foreground">
+            {itemsLoading
+              ? "..."
+              : `${itemTotalElements} article${itemTotalElements !== 1 ? "s" : ""}`}
+          </p>
+          {!isViewer && items.length > 0 && !selectMode && (
+            <button
+              onClick={() => setSelectMode(true)}
+              className="text-sm text-muted-foreground hover:text-foreground transition-colors"
+            >
+              Sélectionner
+            </button>
+          )}
+          {selectMode && (
+            <div className="flex items-center gap-2">
+              <button
+                onClick={toggleSelectAll}
+                className="flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors"
+              >
+                <div className={cn(
+                  "h-4 w-4 rounded border flex items-center justify-center transition-colors",
+                  allOnPageSelected ? "bg-brand border-brand" : "border-border bg-background"
+                )}>
+                  {allOnPageSelected && <Check className="h-3 w-3 text-white" />}
+                </div>
+                Tout sélectionner
+              </button>
+              <button
+                onClick={exitSelectMode}
+                className="text-sm text-muted-foreground hover:text-foreground transition-colors"
+              >
+                Annuler
+              </button>
+            </div>
+          )}
+        </div>
       </div>
 
       {itemsLoading ? (
@@ -312,9 +408,17 @@ export default function ListDetail() {
           <StaggeredList className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5">
             {items.map((item) => {
               const safeImageUrl = sanitizeImageUrl(item.imageUrl);
+              const isSelected = selectedIds.has(item.id);
               return (
               <StaggeredItem key={item.id}>
-                <div className="group rounded-2xl border bg-card shadow-card overflow-hidden transition-all duration-300 hover:shadow-elevated">
+                <div
+                  className={cn(
+                    "group rounded-2xl border bg-card shadow-card overflow-hidden transition-all duration-300 hover:shadow-elevated",
+                    selectMode && "cursor-pointer",
+                    isSelected && "ring-2 ring-brand"
+                  )}
+                  onClick={selectMode ? () => toggleSelect(item.id) : undefined}
+                >
                   <div className="aspect-[4/3] bg-muted flex items-center justify-center overflow-hidden relative">
                     {safeImageUrl ? (
                       <img
@@ -334,7 +438,16 @@ export default function ListDetail() {
                         {formatStatus(item.status)}
                       </Badge>
                     </div>
-                    {!isViewer && (
+                    {selectMode ? (
+                      <div className="absolute top-3 left-3">
+                        <div className={cn(
+                          "h-6 w-6 rounded-full border-2 flex items-center justify-center shadow-sm transition-colors",
+                          isSelected ? "bg-brand border-brand" : "bg-background/90 border-border"
+                        )}>
+                          {isSelected && <Check className="h-3.5 w-3.5 text-white" />}
+                        </div>
+                      </div>
+                    ) : !isViewer && (
                     <div className="absolute top-3 left-3 opacity-100 md:opacity-0 md:group-hover:opacity-100 md:focus-within:opacity-100 transition-opacity">
                       <DropdownMenu>
                         <DropdownMenuTrigger asChild>
@@ -370,6 +483,14 @@ export default function ListDetail() {
                     )}
                   </div>
 
+                  {selectMode ? (
+                    <div className="p-4">
+                      <h3 className="font-semibold tracking-tight mb-1">{item.name}</h3>
+                      <p className="text-muted-foreground text-sm">
+                        <span className="font-medium">Stock:</span> {item.stock}
+                      </p>
+                    </div>
+                  ) : (
                   <Link
                     to={`/lists/${id}/items/${item.id}/edit`}
                     className="block p-4 cursor-pointer"
@@ -414,6 +535,7 @@ export default function ListDetail() {
                         </div>
                       )}
                   </Link>
+                  )}
                 </div>
               </StaggeredItem>
               );
@@ -436,6 +558,28 @@ export default function ListDetail() {
         </>
       )}
 
+      {/* Bulk action bar */}
+      {selectedIds.size > 0 && (
+        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 flex items-center gap-3 bg-card border shadow-float rounded-2xl px-4 py-3 animate-fade-in-up">
+          <span className="text-sm font-medium">
+            {selectedIds.size} article{selectedIds.size !== 1 ? "s" : ""} sélectionné{selectedIds.size !== 1 ? "s" : ""}
+          </span>
+          <div className="h-4 w-px bg-border" />
+          <Button
+            variant="destructive"
+            size="sm"
+            onClick={() => setBulkDeleteConfirmOpen(true)}
+            disabled={bulkDeleteMutation.isPending}
+          >
+            <Trash2 className="h-3.5 w-3.5 mr-1.5" />
+            Supprimer
+          </Button>
+          <Button variant="ghost" size="sm" onClick={exitSelectMode}>
+            Annuler
+          </Button>
+        </div>
+      )}
+
       <ConfirmModal
         isOpen={pendingDeleteId !== null}
         title="Supprimer l'article"
@@ -443,6 +587,15 @@ export default function ListDetail() {
         confirmLabel="Supprimer"
         onConfirm={handleDeleteConfirm}
         onCancel={() => setPendingDeleteId(null)}
+      />
+
+      <ConfirmModal
+        isOpen={bulkDeleteConfirmOpen}
+        title={`Supprimer ${selectedIds.size} article${selectedIds.size !== 1 ? "s" : ""}`}
+        message={buildBulkDeleteMessage()}
+        confirmLabel="Supprimer"
+        onConfirm={handleBulkDeleteConfirm}
+        onCancel={() => setBulkDeleteConfirmOpen(false)}
       />
 
       <BarcodeScannerModal

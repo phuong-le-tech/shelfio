@@ -94,6 +94,10 @@ export const itemsApi = {
     await http.delete(`/items/${id}`);
   },
 
+  bulkDelete: async (ids: string[]): Promise<void> => {
+    await http.post('/items/bulk-delete', { ids });
+  },
+
   getByBarcode: async (barcode: string, signal?: AbortSignal): Promise<Item | null> => {
     try {
       const response = await http.get<Item>(`/items/barcode/${encodeURIComponent(barcode)}`, {

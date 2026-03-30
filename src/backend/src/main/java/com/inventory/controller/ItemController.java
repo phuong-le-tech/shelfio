@@ -1,6 +1,7 @@
 package com.inventory.controller;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.inventory.dto.request.BulkDeleteRequest;
 import com.inventory.dto.request.ItemRequest;
 import com.inventory.dto.request.ItemSearchCriteria;
 import com.inventory.dto.response.DashboardStats;
@@ -185,6 +186,12 @@ public class ItemController {
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> deleteItem(@PathVariable @NonNull UUID id) {
         itemService.deleteItem(id);
+        return ResponseEntity.noContent().build();
+    }
+
+    @PostMapping("/bulk-delete")
+    public ResponseEntity<Void> bulkDeleteItems(@RequestBody @jakarta.validation.Valid BulkDeleteRequest request) {
+        itemService.deleteItems(Objects.requireNonNull(request.getIds()));
         return ResponseEntity.noContent().build();
     }
 

@@ -207,6 +207,19 @@ public class ItemServiceImpl implements IItemService {
     }
 
     @Override
+    @Transactional
+    public void deleteItems(@NonNull List<UUID> ids) {
+        for (UUID id : ids) {
+            if (id == null) continue;
+            try {
+                deleteItem(id);
+            } catch (com.inventory.exception.ItemNotFoundException e) {
+                // Item already gone — skip silently
+            }
+        }
+    }
+
+    @Override
     @Transactional(readOnly = true)
     public DashboardStats getDashboardStats() {
         if (securityUtils.isAdmin()) {
