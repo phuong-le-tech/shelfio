@@ -98,6 +98,10 @@ export const itemsApi = {
     await http.post('/items/bulk-delete', { ids });
   },
 
+  reorder: async (listId: string, orderedIds: string[]): Promise<void> => {
+    await http.patch('/items/reorder', { listId, orderedIds });
+  },
+
   getByBarcode: async (barcode: string, signal?: AbortSignal): Promise<Item | null> => {
     try {
       const response = await http.get<Item>(`/items/barcode/${encodeURIComponent(barcode)}`, {

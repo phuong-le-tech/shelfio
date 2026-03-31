@@ -80,6 +80,7 @@ export interface Item {
   barcode?: string | null;
   imageUrl?: string | null;
   customFieldValues?: Record<string, unknown>;
+  position?: number;
   createdAt: string;
   updatedAt: string;
 }

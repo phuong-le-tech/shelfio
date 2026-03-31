@@ -11,17 +11,19 @@ import {
   Download,
   ScanLine,
   Check,
+  GripVertical,
 } from "lucide-react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { listsApi, itemsApi } from "../services/api";
 import BarcodeScannerModal from "../components/BarcodeScannerModal";
 import {
-  ItemStatus,
+  type ItemStatus,
   formatStatus,
   STATUS_OPTIONS,
   STATUS_LABELS,
   STATUS_BADGE_VARIANTS,
   formatCustomFieldValue,
+  type Item,
 } from "../types/item";
 import { SkeletonCard, SkeletonText } from "../components/Skeleton";
 import { useToast } from "../components/Toast";
@@ -46,8 +48,252 @@ import { sanitizeImageUrl } from "../utils/imageUtils";
 import { queryKeys } from "../lib/queryKeys";
 import { Breadcrumb } from "../components/Breadcrumb";
 import { useWorkspace } from "../contexts/WorkspaceContext";
+import type { ItemListWithItems } from "../types/item";
+import {
+  DndContext,
+  closestCenter,
+  type DragEndEvent,
+  PointerSensor,
+  KeyboardSensor,
+  useSensor,
+  useSensors,
+} from "@dnd-kit/core";
+import {
+  SortableContext,
+  rectSortingStrategy,
+  useSortable,
+  arrayMove,
+  sortableKeyboardCoordinates,
+} from "@dnd-kit/sortable";
+import { CSS } from "@dnd-kit/utilities";
 
 const ITEMS_PER_PAGE = 12;
+
+const SORT_OPTIONS = [
+  { value: "createdAt", label: "Date ↓", dir: "desc" },
+  { value: "updatedAt", label: "Mis à jour", dir: "desc" },
+  { value: "name", label: "Nom", dir: "asc" },
+  { value: "status", label: "Statut", dir: "asc" },
+  { value: "stock", label: "Stock ↓", dir: "desc" },
+  { value: "position", label: "Personnalisé", dir: "asc" },
+] as const;
+type SortByValue = (typeof SORT_OPTIONS)[number]["value"];
+
+type SortableItemCardProps = {
+  item: Item;
+  list: ItemListWithItems;
+  listId: string;
+  selectMode: boolean;
+  isSelected: boolean;
+  isViewer: boolean;
+  isDndMode: boolean;
+  navigate: (path: string) => void;
+  onToggleSelect: (id: string) => void;
+  onDeleteRequest: (id: string) => void;
+  deleteIsPending: boolean;
+};
+
+function SortableItemCard({
+  item,
+  list,
+  listId,
+  selectMode,
+  isSelected,
+  isViewer,
+  isDndMode,
+  navigate,
+  onToggleSelect,
+  onDeleteRequest,
+  deleteIsPending,
+}: SortableItemCardProps) {
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    transform,
+    transition,
+    isDragging,
+  } = useSortable({ id: item.id, disabled: !isDndMode });
+
+  const style = isDndMode
+    ? {
+        transform: CSS.Transform.toString(transform),
+        transition,
+        opacity: isDragging ? 0.5 : 1,
+        zIndex: isDragging ? 10 : undefined,
+      }
+    : undefined;
+
+  const safeImageUrl = sanitizeImageUrl(item.imageUrl);
+
+  return (
+    <div ref={setNodeRef} style={style}>
+      <div
+        className={cn(
+          "group rounded-2xl border bg-card shadow-card overflow-hidden transition-all duration-300 hover:shadow-elevated",
+          selectMode && "cursor-pointer",
+          isSelected && "ring-2 ring-brand",
+          isDndMode && "cursor-default"
+        )}
+        onClick={selectMode ? () => onToggleSelect(item.id) : undefined}
+        role={selectMode ? "checkbox" : undefined}
+        aria-checked={selectMode ? isSelected : undefined}
+        tabIndex={selectMode ? 0 : undefined}
+        onKeyDown={
+          selectMode
+            ? (e) => {
+                if (e.key === " " || e.key === "Enter") {
+                  e.preventDefault();
+                  onToggleSelect(item.id);
+                }
+              }
+            : undefined
+        }
+      >
+        <div className="aspect-[4/3] bg-muted flex items-center justify-center overflow-hidden relative">
+          {safeImageUrl ? (
+            <img
+              src={safeImageUrl}
+              alt={item.name}
+              loading="lazy"
+              className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
+              onError={(e) => {
+                e.currentTarget.style.display = "none";
+              }}
+            />
+          ) : (
+            <div className="text-muted-foreground/40 flex flex-col items-center">
+              <Package className="h-10 w-10 mb-1" />
+            </div>
+          )}
+          <div className="absolute top-3 right-3">
+            <Badge variant={STATUS_BADGE_VARIANTS[item.status]}>
+              {formatStatus(item.status)}
+            </Badge>
+          </div>
+          {isDndMode ? (
+            <div
+              className="absolute top-3 left-3"
+              {...attributes}
+              {...listeners}
+            >
+              <div className="h-8 w-8 bg-background/90 rounded-md flex items-center justify-center cursor-grab active:cursor-grabbing shadow-sm">
+                <GripVertical className="h-4 w-4 text-muted-foreground" />
+              </div>
+            </div>
+          ) : selectMode ? (
+            <div className="absolute top-3 left-3">
+              <div
+                className={cn(
+                  "h-6 w-6 rounded-full border-2 flex items-center justify-center shadow-sm transition-colors",
+                  isSelected
+                    ? "bg-brand border-brand"
+                    : "bg-background/90 border-border"
+                )}
+              >
+                {isSelected && <Check className="h-3.5 w-3.5 text-white" />}
+              </div>
+            </div>
+          ) : (
+            !isViewer && (
+              <div className="absolute top-3 left-3 opacity-100 md:opacity-0 md:group-hover:opacity-100 md:focus-within:opacity-100 transition-opacity">
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button
+                      variant="secondary"
+                      size="icon"
+                      aria-label="Options de l'article"
+                      className="h-8 w-8 shadow-sm"
+                    >
+                      <MoreHorizontal className="h-4 w-4" />
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="start">
+                    <DropdownMenuItem
+                      onClick={() =>
+                        navigate(`/lists/${listId}/items/${item.id}/edit`)
+                      }
+                    >
+                      <Pencil className="h-4 w-4 mr-2" />
+                      Modifier
+                    </DropdownMenuItem>
+                    <DropdownMenuItem
+                      onClick={() => onDeleteRequest(item.id)}
+                      disabled={deleteIsPending}
+                      className="text-destructive focus:text-destructive"
+                    >
+                      <Trash2 className="h-4 w-4 mr-2" />
+                      Supprimer
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              </div>
+            )
+          )}
+        </div>
+
+        {selectMode ? (
+          <div className="p-4">
+            <h3 className="font-semibold tracking-tight mb-1">{item.name}</h3>
+            <p className="text-muted-foreground text-sm">
+              <span className="font-medium">Stock:</span> {item.stock}
+            </p>
+          </div>
+        ) : isDndMode ? (
+          <div className="p-4">
+            <h3 className="font-semibold tracking-tight mb-1">{item.name}</h3>
+            <p className="text-muted-foreground text-sm mb-1">
+              <span className="font-medium">Stock:</span> {item.stock}
+            </p>
+            {item.barcode && (
+              <p className="text-muted-foreground text-xs mb-1 font-mono truncate">
+                <span className="font-medium font-sans">Code-barres:</span>{" "}
+                {item.barcode}
+              </p>
+            )}
+          </div>
+        ) : (
+          <Link
+            to={`/lists/${listId}/items/${item.id}/edit`}
+            className="block p-4 cursor-pointer"
+          >
+            <h3 className="font-semibold tracking-tight mb-1">{item.name}</h3>
+            <p className="text-muted-foreground text-sm mb-1">
+              <span className="font-medium">Stock:</span> {item.stock}
+            </p>
+            {item.barcode && (
+              <p className="text-muted-foreground text-xs mb-1 font-mono truncate">
+                <span className="font-medium font-sans">Code-barres:</span>{" "}
+                {item.barcode}
+              </p>
+            )}
+            {list.customFieldDefinitions &&
+              list.customFieldDefinitions.length > 0 && (
+                <div className="space-y-0.5">
+                  {[...list.customFieldDefinitions]
+                    .sort((a, b) => a.displayOrder - b.displayOrder)
+                    .map((def) => {
+                      const value = item.customFieldValues?.[def.name];
+                      if (value === undefined || value === null || value === "")
+                        return null;
+                      return (
+                        <p
+                          key={def.name}
+                          className="text-muted-foreground text-xs"
+                        >
+                          <span className="font-medium">{def.label}:</span>{" "}
+                          {formatCustomFieldValue(def.type, value)}
+                        </p>
+                      );
+                    })}
+                </div>
+              )}
+          </Link>
+        )}
+      </div>
+    </div>
+  );
+}
 
 export default function ListDetail() {
   const { id } = useParams();
@@ -55,7 +301,7 @@ export default function ListDetail() {
   const { showToast } = useToast();
   const queryClient = useQueryClient();
   const { currentWorkspace } = useWorkspace();
-  const isViewer = currentWorkspace?.role === 'VIEWER';
+  const isViewer = currentWorkspace?.role === "VIEWER";
 
   const [pendingDeleteId, setPendingDeleteId] = useState<string | null>(null);
   const [statusFilter, setStatusFilter] = useState<ItemStatus | "">("");
@@ -65,6 +311,17 @@ export default function ListDetail() {
   const [selectMode, setSelectMode] = useState(false);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [bulkDeleteConfirmOpen, setBulkDeleteConfirmOpen] = useState(false);
+  const [sortBy, setSortBy] = useState<SortByValue>("createdAt");
+  const [localItems, setLocalItems] = useState<Item[]>([]);
+
+  const isDndMode = sortBy === "position" && !selectMode;
+
+  const sensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
+    useSensor(KeyboardSensor, {
+      coordinateGetter: sortableKeyboardCoordinates,
+    })
+  );
 
   const { data: list, isLoading: listLoading, error: listError } = useQuery({
     queryKey: queryKeys.lists.detail(id!),
@@ -80,14 +337,16 @@ export default function ListDetail() {
     }
   }, [listError, list, showToast, navigate]);
 
+  const sortOption = SORT_OPTIONS.find((o) => o.value === sortBy)!;
   const itemParams = {
     itemListId: id!,
     status: statusFilter || undefined,
-    page: itemPage,
-    size: ITEMS_PER_PAGE,
-    sortBy: "createdAt",
-    sortDir: "desc" as const,
+    page: isDndMode ? 0 : itemPage,
+    size: isDndMode ? 500 : ITEMS_PER_PAGE,
+    sortBy,
+    sortDir: sortOption.dir as "asc" | "desc",
   };
+
   const { data: itemsData, isLoading: itemsLoading } = useQuery({
     queryKey: queryKeys.items.list(itemParams),
     queryFn: () => itemsApi.getAll(itemParams),
@@ -97,6 +356,11 @@ export default function ListDetail() {
   const items = itemsData?.content ?? [];
   const itemTotalPages = itemsData?.totalPages ?? 0;
   const itemTotalElements = itemsData?.totalElements ?? 0;
+
+  // Keep localItems in sync with fetched items
+  useEffect(() => {
+    setLocalItems(items);
+  }, [items]);
 
   const deleteMutation = useMutation({
     mutationFn: (itemId: string) => itemsApi.delete(itemId),
@@ -115,7 +379,10 @@ export default function ListDetail() {
     mutationFn: (ids: string[]) => itemsApi.bulkDelete(ids),
     onSuccess: () => {
       const count = selectedIds.size;
-      showToast(`${count} article${count !== 1 ? "s" : ""} supprimé${count !== 1 ? "s" : ""}`, "success");
+      showToast(
+        `${count} article${count !== 1 ? "s" : ""} supprimé${count !== 1 ? "s" : ""}`,
+        "success"
+      );
       setSelectedIds(new Set());
       setSelectMode(false);
       queryClient.invalidateQueries({ queryKey: queryKeys.items.all });
@@ -127,8 +394,45 @@ export default function ListDetail() {
     },
   });
 
+  const reorderMutation = useMutation({
+    mutationFn: ({ listId, orderedIds }: { listId: string; orderedIds: string[] }) =>
+      itemsApi.reorder(listId, orderedIds),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: queryKeys.items.all });
+    },
+    onError: () => {
+      showToast("Échec de la réorganisation", "error");
+      // Restore from server state on error
+      setLocalItems(items);
+    },
+  });
+
+  const handleDragEnd = (event: DragEndEvent) => {
+    if (isViewer) return;
+    const { active, over } = event;
+    if (!over || active.id === over.id) return;
+
+    const oldIndex = localItems.findIndex((i) => i.id === active.id.toString());
+    const newIndex = localItems.findIndex((i) => i.id === over.id.toString());
+    if (oldIndex === -1 || newIndex === -1) return;
+
+    const reordered = arrayMove(localItems, oldIndex, newIndex);
+    setLocalItems(reordered);
+    reorderMutation.mutate({
+      listId: id!,
+      orderedIds: reordered.map((i) => i.id),
+    });
+  };
+
   const handleStatusFilterChange = (value: string) => {
     setStatusFilter(value as ItemStatus | "");
+    setItemPage(0);
+    setSelectMode(false);
+    setSelectedIds(new Set());
+  };
+
+  const handleSortChange = (value: SortByValue) => {
+    setSortBy(value);
     setItemPage(0);
     setSelectMode(false);
     setSelectedIds(new Set());
@@ -170,9 +474,13 @@ export default function ListDetail() {
     const count = selectedIds.size;
     const selectedItems = items.filter((item) => selectedIds.has(item.id));
     const names = selectedItems.map((item) => item.name);
-    const preview = names.length <= 5
-      ? names.map((n) => `• ${n}`).join("\n")
-      : [...names.slice(0, 5).map((n) => `• ${n}`), `• et ${names.length - 5} autre${names.length - 5 !== 1 ? "s" : ""}`].join("\n");
+    const preview =
+      names.length <= 5
+        ? names.map((n) => `• ${n}`).join("\n")
+        : [
+            ...names.slice(0, 5).map((n) => `• ${n}`),
+            `• et ${names.length - 5} autre${names.length - 5 !== 1 ? "s" : ""}`,
+          ].join("\n");
     return `Êtes-vous sûr de vouloir supprimer ${count} article${count !== 1 ? "s" : ""} ? Cette action est irréversible.\n\n${preview}`;
   };
 
@@ -187,10 +495,8 @@ export default function ListDetail() {
       if (item && item.itemListId === id) {
         navigate(`/lists/${id}/items/${item.id}/edit`);
       } else if (item) {
-        // Item exists but in a different list — navigate to its edit page
         navigate(`/lists/${item.itemListId}/items/${item.id}/edit`);
       } else {
-        // No item found — create new with barcode prefilled
         navigate(`/lists/${id}/items/new?barcode=${encodeURIComponent(barcode)}`);
       }
     } catch {
@@ -259,11 +565,14 @@ export default function ListDetail() {
     );
   }
 
-  const allOnPageSelected = items.length > 0 && selectedIds.size === items.length;
+  const allOnPageSelected =
+    items.length > 0 && selectedIds.size === items.length;
 
   return (
     <div className="max-w-7xl mx-auto animate-fade-in">
-      <Breadcrumb items={[{ label: 'Mes Listes', href: '/lists' }, { label: list.name }]} />
+      <Breadcrumb
+        items={[{ label: "Mes Listes", href: "/lists" }, { label: list.name }]}
+      />
 
       {/* Full-width header banner */}
       <div className="mb-8">
@@ -306,10 +615,7 @@ export default function ListDetail() {
               <Download className="h-4 w-4 mr-1.5" />
               {isExporting ? "Export..." : "Exporter CSV"}
             </Button>
-            <Button
-              variant="outline"
-              onClick={() => setScannerOpen(true)}
-            >
+            <Button variant="outline" onClick={() => setScannerOpen(true)}>
               <ScanLine className="h-4 w-4 mr-1.5" />
               Scanner
             </Button>
@@ -325,9 +631,13 @@ export default function ListDetail() {
         </div>
       </div>
 
-      {/* Status filter pills */}
+      {/* Status filter pills + sort + select controls */}
       <div className="flex items-center justify-between mb-6 gap-4">
-        <div className="flex gap-2 flex-wrap" role="tablist" aria-label="Filtrer par statut">
+        <div
+          className="flex gap-2 flex-wrap"
+          role="tablist"
+          aria-label="Filtrer par statut"
+        >
           <button
             onClick={() => handleStatusFilterChange("")}
             role="tab"
@@ -336,7 +646,7 @@ export default function ListDetail() {
               "px-4 py-1.5 rounded-full text-sm font-medium transition-all duration-200 border",
               statusFilter === ""
                 ? "bg-foreground text-background border-foreground"
-                : "bg-background text-muted-foreground border-border hover:border-foreground/30",
+                : "bg-background text-muted-foreground border-border hover:border-foreground/30"
             )}
           >
             Tous
@@ -351,7 +661,7 @@ export default function ListDetail() {
                 "px-4 py-1.5 rounded-full text-sm font-medium transition-all duration-200 border",
                 statusFilter === status
                   ? "bg-foreground text-background border-foreground"
-                  : "bg-background text-muted-foreground border-border hover:border-foreground/30",
+                  : "bg-background text-muted-foreground border-border hover:border-foreground/30"
               )}
             >
               {STATUS_LABELS[status]}
@@ -359,12 +669,28 @@ export default function ListDetail() {
           ))}
         </div>
         <div className="flex items-center gap-3 shrink-0">
+          {!selectMode && (
+            <select
+              value={sortBy}
+              onChange={(e) => handleSortChange(e.target.value as SortByValue)}
+              aria-label="Trier par"
+              className="text-sm text-muted-foreground bg-background border border-border rounded-lg px-2 py-1 cursor-pointer hover:border-foreground/30 transition-colors focus:outline-none focus:ring-1 focus:ring-ring"
+            >
+              {SORT_OPTIONS.filter(
+                (opt) => opt.value !== "position" || !isViewer
+              ).map((opt) => (
+                <option key={opt.value} value={opt.value}>
+                  {opt.label}
+                </option>
+              ))}
+            </select>
+          )}
           <p className="text-sm text-muted-foreground">
             {itemsLoading
               ? "..."
               : `${itemTotalElements} article${itemTotalElements !== 1 ? "s" : ""}`}
           </p>
-          {!isViewer && items.length > 0 && !selectMode && (
+          {!isViewer && items.length > 0 && !selectMode && !isDndMode && (
             <button
               onClick={() => setSelectMode(true)}
               className="text-sm text-muted-foreground hover:text-foreground transition-colors"
@@ -379,11 +705,17 @@ export default function ListDetail() {
                 aria-pressed={allOnPageSelected}
                 className="flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors"
               >
-                <div className={cn(
-                  "h-4 w-4 rounded border flex items-center justify-center transition-colors",
-                  allOnPageSelected ? "bg-brand border-brand" : "border-border bg-background"
-                )}>
-                  {allOnPageSelected && <Check className="h-3 w-3 text-white" />}
+                <div
+                  className={cn(
+                    "h-4 w-4 rounded border flex items-center justify-center transition-colors",
+                    allOnPageSelected
+                      ? "bg-brand border-brand"
+                      : "border-border bg-background"
+                  )}
+                >
+                  {allOnPageSelected && (
+                    <Check className="h-3 w-3 text-white" />
+                  )}
                 </div>
                 Tout sélectionner
               </button>
@@ -406,146 +738,63 @@ export default function ListDetail() {
         </div>
       ) : (
         <>
-          <StaggeredList className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5">
-            {items.map((item) => {
-              const safeImageUrl = sanitizeImageUrl(item.imageUrl);
-              const isSelected = selectedIds.has(item.id);
-              return (
-              <StaggeredItem key={item.id}>
-                <div
-                  className={cn(
-                    "group rounded-2xl border bg-card shadow-card overflow-hidden transition-all duration-300 hover:shadow-elevated",
-                    selectMode && "cursor-pointer",
-                    isSelected && "ring-2 ring-brand"
-                  )}
-                  onClick={selectMode ? () => toggleSelect(item.id) : undefined}
-                  role={selectMode ? "checkbox" : undefined}
-                  aria-checked={selectMode ? isSelected : undefined}
-                  tabIndex={selectMode ? 0 : undefined}
-                  onKeyDown={selectMode ? (e) => { if (e.key === ' ' || e.key === 'Enter') { e.preventDefault(); toggleSelect(item.id); } } : undefined}
-                >
-                  <div className="aspect-[4/3] bg-muted flex items-center justify-center overflow-hidden relative">
-                    {safeImageUrl ? (
-                      <img
-                        src={safeImageUrl}
-                        alt={item.name}
-                        loading="lazy"
-                        className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
-                        onError={(e) => { e.currentTarget.style.display = 'none'; }}
-                      />
-                    ) : (
-                      <div className="text-muted-foreground/40 flex flex-col items-center">
-                        <Package className="h-10 w-10 mb-1" />
-                      </div>
-                    )}
-                    <div className="absolute top-3 right-3">
-                      <Badge variant={STATUS_BADGE_VARIANTS[item.status]}>
-                        {formatStatus(item.status)}
-                      </Badge>
-                    </div>
-                    {selectMode ? (
-                      <div className="absolute top-3 left-3">
-                        <div className={cn(
-                          "h-6 w-6 rounded-full border-2 flex items-center justify-center shadow-sm transition-colors",
-                          isSelected ? "bg-brand border-brand" : "bg-background/90 border-border"
-                        )}>
-                          {isSelected && <Check className="h-3.5 w-3.5 text-white" />}
-                        </div>
-                      </div>
-                    ) : !isViewer && (
-                    <div className="absolute top-3 left-3 opacity-100 md:opacity-0 md:group-hover:opacity-100 md:focus-within:opacity-100 transition-opacity">
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                          <Button
-                            variant="secondary"
-                            size="icon"
-                            aria-label="Options de l'article"
-                            className="h-8 w-8 shadow-sm"
-                          >
-                            <MoreHorizontal className="h-4 w-4" />
-                          </Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="start">
-                          <DropdownMenuItem
-                            onClick={() =>
-                              navigate(`/lists/${id}/items/${item.id}/edit`)
-                            }
-                          >
-                            <Pencil className="h-4 w-4 mr-2" />
-                            Modifier
-                          </DropdownMenuItem>
-                          <DropdownMenuItem
-                            onClick={() => setPendingDeleteId(item.id)}
-                            disabled={deleteMutation.isPending && deleteMutation.variables === item.id}
-                            className="text-destructive focus:text-destructive"
-                          >
-                            <Trash2 className="h-4 w-4 mr-2" />
-                            Supprimer
-                          </DropdownMenuItem>
-                        </DropdownMenuContent>
-                      </DropdownMenu>
-                    </div>
-                    )}
-                  </div>
-
-                  {selectMode ? (
-                    <div className="p-4">
-                      <h3 className="font-semibold tracking-tight mb-1">{item.name}</h3>
-                      <p className="text-muted-foreground text-sm">
-                        <span className="font-medium">Stock:</span> {item.stock}
-                      </p>
-                    </div>
-                  ) : (
-                  <Link
-                    to={`/lists/${id}/items/${item.id}/edit`}
-                    className="block p-4 cursor-pointer"
-                  >
-                    <h3 className="font-semibold tracking-tight mb-1">
-                      {item.name}
-                    </h3>
-                    <p className="text-muted-foreground text-sm mb-1">
-                      <span className="font-medium">Stock:</span> {item.stock}
-                    </p>
-                    {item.barcode && (
-                      <p className="text-muted-foreground text-xs mb-1 font-mono truncate">
-                        <span className="font-medium font-sans">Code-barres:</span>{" "}
-                        {item.barcode}
-                      </p>
-                    )}
-                    {list.customFieldDefinitions &&
-                      list.customFieldDefinitions.length > 0 && (
-                        <div className="space-y-0.5">
-                          {[...list.customFieldDefinitions]
-                            .sort((a, b) => a.displayOrder - b.displayOrder)
-                            .map((def) => {
-                              const value = item.customFieldValues?.[def.name];
-                              if (
-                                value === undefined ||
-                                value === null ||
-                                value === ""
-                              )
-                                return null;
-                              return (
-                                <p
-                                  key={def.name}
-                                  className="text-muted-foreground text-xs"
-                                >
-                                  <span className="font-medium">
-                                    {def.label}:
-                                  </span>{" "}
-                                  {formatCustomFieldValue(def.type, value)}
-                                </p>
-                              );
-                            })}
-                        </div>
-                      )}
-                  </Link>
-                  )}
+          {isDndMode ? (
+            <DndContext
+              sensors={sensors}
+              collisionDetection={closestCenter}
+              onDragEnd={handleDragEnd}
+            >
+              <SortableContext
+                items={localItems.map((i) => i.id)}
+                strategy={rectSortingStrategy}
+              >
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5">
+                  {localItems.map((item) => (
+                    <SortableItemCard
+                      key={item.id}
+                      item={item}
+                      list={list}
+                      listId={id!}
+                      selectMode={false}
+                      isSelected={false}
+                      isViewer={isViewer}
+                      isDndMode={true}
+                      navigate={navigate}
+                      onToggleSelect={toggleSelect}
+                      onDeleteRequest={setPendingDeleteId}
+                      deleteIsPending={
+                        deleteMutation.isPending &&
+                        deleteMutation.variables === item.id
+                      }
+                    />
+                  ))}
                 </div>
-              </StaggeredItem>
-              );
-            })}
-          </StaggeredList>
+              </SortableContext>
+            </DndContext>
+          ) : (
+            <StaggeredList className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5">
+              {items.map((item) => (
+                <StaggeredItem key={item.id}>
+                  <SortableItemCard
+                    item={item}
+                    list={list}
+                    listId={id!}
+                    selectMode={selectMode}
+                    isSelected={selectedIds.has(item.id)}
+                    isViewer={isViewer}
+                    isDndMode={false}
+                    navigate={navigate}
+                    onToggleSelect={toggleSelect}
+                    onDeleteRequest={setPendingDeleteId}
+                    deleteIsPending={
+                      deleteMutation.isPending &&
+                      deleteMutation.variables === item.id
+                    }
+                  />
+                </StaggeredItem>
+              ))}
+            </StaggeredList>
+          )}
 
           {items.length === 0 && (
             <div className="text-center py-20 animate-fade-in">
@@ -554,12 +803,20 @@ export default function ListDetail() {
                 Aucun article dans cette liste.
               </p>
               <Button asChild>
-                <Link to={`/lists/${id}/items/new`}>Ajouter votre premier article</Link>
+                <Link to={`/lists/${id}/items/new`}>
+                  Ajouter votre premier article
+                </Link>
               </Button>
             </div>
           )}
 
-          <Pagination page={itemPage} totalPages={itemTotalPages} onPageChange={setItemPage} />
+          {!isDndMode && (
+            <Pagination
+              page={itemPage}
+              totalPages={itemTotalPages}
+              onPageChange={setItemPage}
+            />
+          )}
         </>
       )}
 
@@ -567,7 +824,8 @@ export default function ListDetail() {
       {selectedIds.size > 0 && (
         <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 flex items-center gap-3 bg-card border shadow-float rounded-2xl px-4 py-3 animate-fade-in-up">
           <span className="text-sm font-medium">
-            {selectedIds.size} article{selectedIds.size !== 1 ? "s" : ""} sélectionné{selectedIds.size !== 1 ? "s" : ""}
+            {selectedIds.size} article{selectedIds.size !== 1 ? "s" : ""}{" "}
+            sélectionné{selectedIds.size !== 1 ? "s" : ""}
           </span>
           <div className="h-4 w-px bg-border" />
           <Button

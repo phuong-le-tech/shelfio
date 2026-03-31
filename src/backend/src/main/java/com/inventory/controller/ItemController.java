@@ -4,6 +4,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.inventory.dto.request.BulkDeleteRequest;
 import com.inventory.dto.request.ItemRequest;
 import com.inventory.dto.request.ItemSearchCriteria;
+import com.inventory.dto.request.ReorderItemsRequest;
 import com.inventory.dto.response.DashboardStats;
 import com.inventory.dto.response.ImageAnalysisResult;
 import com.inventory.dto.response.ItemResponse;
@@ -56,7 +57,7 @@ import org.springframework.security.core.annotation.AuthenticationPrincipal;
 @Validated
 public class ItemController {
 
-    private static final Set<String> ALLOWED_SORT_FIELDS = Set.of("createdAt", "updatedAt", "name", "status", "stock");
+    private static final Set<String> ALLOWED_SORT_FIELDS = Set.of("createdAt", "updatedAt", "name", "status", "stock", "position");
     private static final int IMAGE_CACHE_MAX_AGE_SECONDS = 840; // 14 minutes (under 15-min presigned URL expiry)
     private static final long MAX_ANALYSIS_FILE_SIZE = 10 * 1024 * 1024; // 10MB
 
@@ -192,6 +193,12 @@ public class ItemController {
     @PostMapping("/bulk-delete")
     public ResponseEntity<Void> bulkDeleteItems(@RequestBody @jakarta.validation.Valid BulkDeleteRequest request) {
         itemService.deleteItems(Objects.requireNonNull(request.getIds()));
+        return ResponseEntity.noContent().build();
+    }
+
+    @PatchMapping("/reorder")
+    public ResponseEntity<Void> reorderItems(@RequestBody @jakarta.validation.Valid ReorderItemsRequest request) {
+        itemService.reorderItems(Objects.requireNonNull(request));
         return ResponseEntity.noContent().build();
     }
 

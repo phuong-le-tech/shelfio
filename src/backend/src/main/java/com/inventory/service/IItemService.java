@@ -2,6 +2,7 @@ package com.inventory.service;
 
 import com.inventory.dto.request.ItemRequest;
 import com.inventory.dto.request.ItemSearchCriteria;
+import com.inventory.dto.request.ReorderItemsRequest;
 import com.inventory.dto.response.DashboardStats;
 import com.inventory.model.Item;
 import org.springframework.data.domain.Page;
@@ -36,4 +37,6 @@ public interface IItemService {
     void deleteItem(@NonNull UUID id);
 
     void deleteItems(@NonNull List<UUID> ids);
+
+    void reorderItems(@NonNull ReorderItemsRequest request);
 }

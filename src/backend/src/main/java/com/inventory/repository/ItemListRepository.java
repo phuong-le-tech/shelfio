@@ -1,10 +1,12 @@
 package com.inventory.repository;
 
 import com.inventory.model.ItemList;
+import jakarta.persistence.LockModeType;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
+import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.lang.NonNull;
@@ -40,4 +42,8 @@ public interface ItemListRepository extends JpaRepository<ItemList, UUID>, JpaSp
 
     @Query("SELECT il.workspace.id, COUNT(il) FROM ItemList il WHERE il.workspace.id IN :workspaceIds GROUP BY il.workspace.id")
     List<Object[]> countListsByWorkspaceIds(@Param("workspaceIds") List<UUID> workspaceIds);
+
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("SELECT il FROM ItemList il WHERE il.id = :id")
+    Optional<ItemList> findByIdWithLock(@Param("id") UUID id);
 }

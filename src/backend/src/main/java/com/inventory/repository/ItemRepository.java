@@ -52,6 +52,9 @@ public interface ItemRepository extends JpaRepository<Item, UUID>, JpaSpecificat
 
     long countByItemListId(UUID itemListId);
 
+    @Query("SELECT COALESCE(MAX(i.position), -1) + 1 FROM Item i WHERE i.itemList.id = :listId")
+    int findNextPositionForList(@Param("listId") UUID listId);
+
     List<Item> findAllByItemListIdOrderByCreatedAtAsc(UUID itemListId);
 
     Optional<Item> findByBarcodeAndItemList_User_Id(String barcode, UUID userId);
