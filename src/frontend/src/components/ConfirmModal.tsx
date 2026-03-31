@@ -50,7 +50,7 @@ export default function ConfirmModal({
             </div>
             <div>
               <DialogTitle>{title}</DialogTitle>
-              <DialogDescription className="mt-1">{message}</DialogDescription>
+              <DialogDescription className="mt-1 whitespace-pre-wrap">{message}</DialogDescription>
             </div>
           </div>
         </DialogHeader>
