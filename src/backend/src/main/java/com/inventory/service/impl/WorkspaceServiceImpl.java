@@ -14,7 +14,9 @@ import com.inventory.model.WorkspaceMember;
 import com.inventory.repository.*;
 import com.inventory.repository.ItemListRepository;
 import com.inventory.security.SecurityUtils;
+import com.inventory.enums.ActivityEventType;
 import com.inventory.service.EmailSender;
+import com.inventory.service.IActivityService;
 import com.inventory.service.IWorkspaceService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -45,6 +47,7 @@ public class WorkspaceServiceImpl implements IWorkspaceService {
     private final UserRepository userRepository;
     private final SecurityUtils securityUtils;
     private final EmailSender emailSender;
+    private final IActivityService activityService;
 
     @Value("${app.frontend-url}")
     private String frontendUrl;
@@ -263,6 +266,8 @@ public class WorkspaceServiceImpl implements IWorkspaceService {
         member.setUser(user);
         member.setRole(invitation.getRole());
         workspaceMemberRepository.save(member);
+        activityService.record(invitation.getWorkspace().getId(),
+                ActivityEventType.MEMBER_ADDED, "MEMBER", user.getId(), user.getEmail());
 
         invitation.setStatus(InvitationStatus.ACCEPTED);
         workspaceInvitationRepository.save(invitation);
@@ -302,6 +307,7 @@ public class WorkspaceServiceImpl implements IWorkspaceService {
 
         UUID currentUserId = requireCurrentUserId();
         workspaceMemberRepository.deleteByWorkspaceIdAndUserId(workspaceId, userId);
+        activityService.record(workspaceId, ActivityEventType.MEMBER_REMOVED, "MEMBER", userId, null);
         log.info("User {} removed user {} from workspace {}", currentUserId, userId, workspaceId);
     }
 
@@ -327,6 +333,7 @@ public class WorkspaceServiceImpl implements IWorkspaceService {
 
         member.setRole(request.role());
         workspaceMemberRepository.save(member);
+        activityService.record(workspaceId, ActivityEventType.MEMBER_ROLE_CHANGED, "MEMBER", userId, null);
 
         log.info("User {} updated role of user {} in workspace {} to {}",
                 requireCurrentUserId(), userId, workspaceId, request.role());
