@@ -49,6 +49,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
+import org.mockito.InOrder;
 import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
@@ -667,13 +668,14 @@ class ItemServiceImplTest {
 
             itemService.deleteItem(testId);
 
-            verify(activityService).record(
+            InOrder inOrder = inOrder(activityService, itemRepository);
+            inOrder.verify(activityService).record(
                     eq(testWorkspaceId),
                     eq(ActivityEventType.ITEM_DELETED),
                     eq("ITEM"),
                     eq(testId),
                     eq("Test Item"));
-            verify(itemRepository).delete(testItem);
+            inOrder.verify(itemRepository).delete(testItem);
         }
     }
 

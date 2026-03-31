@@ -130,9 +130,6 @@ public class ItemServiceImpl implements IItemService {
 
         // Save first to get the generated ID
         Item savedItem = itemRepository.save(item);
-        activityService.record(
-                savedItem.getItemList().getWorkspace().getId(),
-                ActivityEventType.ITEM_CREATED, "ITEM", savedItem.getId(), savedItem.getName());
 
         if (image != null && !image.isEmpty()) {
             byte[] imageBytes = image.getBytes();
@@ -143,13 +140,17 @@ public class ItemServiceImpl implements IItemService {
             imageStorageService.upload(imageKey, webpBytes, "image/webp");
             savedItem.setImageKey(imageKey);
             try {
-                return itemRepository.save(savedItem);
+                savedItem = itemRepository.save(savedItem);
             } catch (Exception e) {
                 deleteImageQuietly(imageKey);
                 throw e;
             }
         }
 
+        // Record after all saves succeed so the event is never orphaned by an image-save failure
+        activityService.record(
+                savedItem.getItemList().getWorkspace().getId(),
+                ActivityEventType.ITEM_CREATED, "ITEM", savedItem.getId(), savedItem.getName());
         return savedItem;
     }
 
