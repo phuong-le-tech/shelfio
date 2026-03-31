@@ -23,6 +23,8 @@ import com.inventory.repository.UserRepository;
 import com.inventory.repository.WorkspaceRepository;
 import com.inventory.security.SecurityUtils;
 import com.inventory.security.WorkspaceAccessUtils;
+import com.inventory.enums.ActivityEventType;
+import com.inventory.service.IActivityService;
 import com.inventory.service.impl.ItemListServiceImpl;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -73,6 +75,9 @@ class ItemListServiceImplTest {
     @Mock
     private CustomFieldValidator customFieldValidator;
 
+    @Mock
+    private IActivityService activityService;
+
     private ItemListServiceImpl itemListService;
 
     private User testUser;
@@ -87,7 +92,7 @@ class ItemListServiceImplTest {
         itemListService = new ItemListServiceImpl(
                 itemListRepository, itemRepository, userRepository,
                 workspaceRepository, securityUtils, workspaceAccessUtils,
-                customFieldValidator, true);
+                customFieldValidator, true, activityService);
 
         testUserId = UUID.randomUUID();
         testListId = UUID.randomUUID();
@@ -321,7 +326,7 @@ class ItemListServiceImplTest {
             ItemListServiceImpl serviceWithPremiumDisabled = new ItemListServiceImpl(
                     itemListRepository, itemRepository, userRepository,
                     workspaceRepository, securityUtils, workspaceAccessUtils,
-                    customFieldValidator, false);
+                    customFieldValidator, false, activityService);
 
             testUser.setRole(Role.USER);
             ItemListRequest request = new ItemListRequest("Sixth List", null, null, null, null);
@@ -854,6 +859,65 @@ class ItemListServiceImplTest {
 
             assertThatThrownBy(() -> itemListService.exportListAsCsv(nonExistingId))
                     .isInstanceOf(ItemListNotFoundException.class);
+        }
+    }
+
+    @Nested
+    @DisplayName("activity recording")
+    class ActivityRecordingTests {
+
+        @Test
+        @DisplayName("createList records LIST_CREATED event")
+        void createList_recordsCreatedEvent() {
+            ItemListRequest request = new ItemListRequest("My List", null, null, null, testWorkspaceId);
+
+            when(securityUtils.getCurrentUserId()).thenReturn(Optional.of(testUserId));
+            when(userRepository.findByIdWithLock(testUserId)).thenReturn(Optional.of(testUser));
+            when(workspaceRepository.findByIdWithLock(testWorkspaceId)).thenReturn(Optional.of(testWorkspace));
+            WorkspaceMember member = new WorkspaceMember();
+            member.setRole(WorkspaceRole.EDITOR);
+            when(workspaceAccessUtils.requireMembership(testWorkspaceId)).thenReturn(member);
+            when(itemListRepository.save(any())).thenReturn(testList);
+
+            itemListService.createList(request);
+
+            verify(activityService).record(testWorkspaceId, ActivityEventType.LIST_CREATED,
+                    "LIST", testList.getId(), testList.getName());
+        }
+
+        @Test
+        @DisplayName("updateList records LIST_UPDATED event")
+        void updateList_recordsUpdatedEvent() {
+            ItemListRequest request = new ItemListRequest("Updated List", null, null, null, testWorkspaceId);
+
+            when(securityUtils.isAdmin()).thenReturn(false);
+            when(workspaceAccessUtils.getAccessibleWorkspaceIds()).thenReturn(List.of(testWorkspaceId));
+            when(itemListRepository.findByIdAndWorkspaceIdIn(testListId, List.of(testWorkspaceId)))
+                    .thenReturn(Optional.of(testList));
+            WorkspaceMember member = new WorkspaceMember();
+            member.setRole(WorkspaceRole.EDITOR);
+            when(workspaceAccessUtils.requireMembership(testWorkspaceId)).thenReturn(member);
+            when(itemListRepository.save(any())).thenReturn(testList);
+
+            itemListService.updateList(testListId, request);
+
+            verify(activityService).record(testWorkspaceId, ActivityEventType.LIST_UPDATED,
+                    "LIST", testList.getId(), testList.getName());
+        }
+
+        @Test
+        @DisplayName("deleteList records LIST_DELETED event after deletion")
+        void deleteList_recordsDeletedEvent() {
+            when(securityUtils.isAdmin()).thenReturn(false);
+            when(workspaceAccessUtils.getAccessibleWorkspaceIds()).thenReturn(List.of(testWorkspaceId));
+            when(itemListRepository.findByIdAndWorkspaceIdIn(testListId, List.of(testWorkspaceId)))
+                    .thenReturn(Optional.of(testList));
+            when(workspaceAccessUtils.requireRole(testWorkspaceId, WorkspaceRole.OWNER)).thenReturn(null);
+
+            itemListService.deleteList(testListId);
+
+            verify(activityService).record(testWorkspaceId, ActivityEventType.LIST_DELETED,
+                    "LIST", testListId, "Test List");
         }
     }
 }
