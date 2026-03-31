@@ -3,10 +3,12 @@ package com.inventory.service;
 import com.inventory.dto.request.ItemRequest;
 import com.inventory.dto.request.ItemSearchCriteria;
 import com.inventory.dto.response.DashboardStats;
+import com.inventory.enums.ActivityEventType;
 import com.inventory.enums.ItemStatus;
 import com.inventory.enums.WorkspaceRole;
 import com.inventory.exception.ItemListNotFoundException;
 import com.inventory.exception.ItemNotFoundException;
+import com.inventory.service.IActivityService;
 import com.inventory.model.Item;
 import com.inventory.model.ItemList;
 import com.inventory.model.User;
@@ -73,6 +75,9 @@ class ItemServiceImplTest {
 
     @Mock
     private ImageProcessingService imageProcessingService;
+
+    @Mock
+    private IActivityService activityService;
 
     @InjectMocks
     private ItemServiceImpl itemService;
@@ -289,7 +294,7 @@ class ItemServiceImplTest {
         void createItem_validRequest_createsItem() throws IOException {
             ItemRequest request = new ItemRequest("New Item", testListId, ItemStatus.AVAILABLE, 5, null, null);
             when(securityUtils.isAdmin()).thenReturn(true);
-            when(itemListRepository.findById(testListId)).thenReturn(Optional.of(testList));
+            when(itemListRepository.findByIdWithLock(testListId)).thenReturn(Optional.of(testList));
             when(itemRepository.save(any(Item.class))).thenAnswer(invocation -> {
                 Item saved = invocation.getArgument(0);
                 saved.setId(UUID.randomUUID());
@@ -310,7 +315,7 @@ class ItemServiceImplTest {
         void createItem_noStatus_usesDefaultStatus() throws IOException {
             ItemRequest request = new ItemRequest("New Item", testListId, null, null, null, null);
             when(securityUtils.isAdmin()).thenReturn(true);
-            when(itemListRepository.findById(testListId)).thenReturn(Optional.of(testList));
+            when(itemListRepository.findByIdWithLock(testListId)).thenReturn(Optional.of(testList));
             when(itemRepository.save(any(Item.class))).thenAnswer(invocation -> invocation.getArgument(0));
 
             Item result = itemService.createItem(request, null);
@@ -324,7 +329,7 @@ class ItemServiceImplTest {
         void createItem_listNotFound_throwsException() {
             UUID nonExistingListId = UUID.randomUUID();
             ItemRequest request = new ItemRequest("New Item", nonExistingListId, ItemStatus.AVAILABLE, 5, null, null);
-            when(itemListRepository.findById(nonExistingListId)).thenReturn(Optional.empty());
+            when(itemListRepository.findByIdWithLock(nonExistingListId)).thenReturn(Optional.empty());
 
             assertThatThrownBy(() -> itemService.createItem(request, null))
                     .isInstanceOf(ItemListNotFoundException.class);
@@ -340,7 +345,7 @@ class ItemServiceImplTest {
                     "image", "test.jpg", "image/jpeg", jpegBytes);
 
             when(securityUtils.isAdmin()).thenReturn(true);
-            when(itemListRepository.findById(testListId)).thenReturn(Optional.of(testList));
+            when(itemListRepository.findByIdWithLock(testListId)).thenReturn(Optional.of(testList));
             when(itemRepository.save(any(Item.class))).thenAnswer(invocation -> invocation.getArgument(0));
             when(imageProcessingService.processToWebP(any())).thenReturn(new byte[]{1, 2, 3});
             when(imageStorageService.upload(anyString(), any(byte[].class), anyString())).thenReturn("items/test-key.webp");
@@ -360,7 +365,7 @@ class ItemServiceImplTest {
             MockMultipartFile image = new MockMultipartFile("image", "test.png", "image/png", pngBytes);
 
             when(securityUtils.isAdmin()).thenReturn(true);
-            when(itemListRepository.findById(testListId)).thenReturn(Optional.of(testList));
+            when(itemListRepository.findByIdWithLock(testListId)).thenReturn(Optional.of(testList));
             when(itemRepository.save(any(Item.class))).thenAnswer(invocation -> invocation.getArgument(0));
             when(imageProcessingService.processToWebP(any())).thenReturn(new byte[]{1, 2, 3});
             when(imageStorageService.upload(anyString(), any(byte[].class), anyString())).thenReturn("items/test-key.webp");
@@ -378,7 +383,7 @@ class ItemServiceImplTest {
             MockMultipartFile image = new MockMultipartFile("image", "test.gif", "image/gif", gifBytes);
 
             when(securityUtils.isAdmin()).thenReturn(true);
-            when(itemListRepository.findById(testListId)).thenReturn(Optional.of(testList));
+            when(itemListRepository.findByIdWithLock(testListId)).thenReturn(Optional.of(testList));
             when(itemRepository.save(any(Item.class))).thenAnswer(invocation -> invocation.getArgument(0));
             when(imageProcessingService.processToWebP(any())).thenReturn(new byte[]{1, 2, 3});
             when(imageStorageService.upload(anyString(), any(byte[].class), anyString())).thenReturn("items/test-key.webp");
@@ -397,7 +402,7 @@ class ItemServiceImplTest {
             MockMultipartFile image = new MockMultipartFile("image", "test.webp", "image/webp", webpBytes);
 
             when(securityUtils.isAdmin()).thenReturn(true);
-            when(itemListRepository.findById(testListId)).thenReturn(Optional.of(testList));
+            when(itemListRepository.findByIdWithLock(testListId)).thenReturn(Optional.of(testList));
             when(itemRepository.save(any(Item.class))).thenAnswer(invocation -> invocation.getArgument(0));
             when(imageProcessingService.processToWebP(any())).thenReturn(new byte[]{1, 2, 3});
             when(imageStorageService.upload(anyString(), any(byte[].class), anyString())).thenReturn("items/test-key.webp");
@@ -418,7 +423,8 @@ class ItemServiceImplTest {
             MockMultipartFile image = new MockMultipartFile("image", "big.jpg", "image/jpeg", largeFile);
 
             when(securityUtils.isAdmin()).thenReturn(true);
-            when(itemListRepository.findById(testListId)).thenReturn(Optional.of(testList));
+            when(itemListRepository.findByIdWithLock(testListId)).thenReturn(Optional.of(testList));
+            when(itemRepository.save(any(Item.class))).thenAnswer(invocation -> invocation.getArgument(0));
 
             assertThatThrownBy(() -> itemService.createItem(request, image))
                     .isInstanceOf(FileValidationException.class)
@@ -433,7 +439,8 @@ class ItemServiceImplTest {
             MockMultipartFile image = new MockMultipartFile("image", "test.pdf", "application/pdf", invalidBytes);
 
             when(securityUtils.isAdmin()).thenReturn(true);
-            when(itemListRepository.findById(testListId)).thenReturn(Optional.of(testList));
+            when(itemListRepository.findByIdWithLock(testListId)).thenReturn(Optional.of(testList));
+            when(itemRepository.save(any(Item.class))).thenAnswer(invocation -> invocation.getArgument(0));
 
             assertThatThrownBy(() -> itemService.createItem(request, image))
                     .isInstanceOf(FileValidationException.class)
@@ -448,7 +455,8 @@ class ItemServiceImplTest {
             MockMultipartFile image = new MockMultipartFile("image", "tiny.bin", "application/octet-stream", tinyBytes);
 
             when(securityUtils.isAdmin()).thenReturn(true);
-            when(itemListRepository.findById(testListId)).thenReturn(Optional.of(testList));
+            when(itemListRepository.findByIdWithLock(testListId)).thenReturn(Optional.of(testList));
+            when(itemRepository.save(any(Item.class))).thenAnswer(invocation -> invocation.getArgument(0));
 
             assertThatThrownBy(() -> itemService.createItem(request, image))
                     .isInstanceOf(FileValidationException.class)
@@ -460,7 +468,7 @@ class ItemServiceImplTest {
         void createItem_nonOwner_throwsException() {
             ItemRequest request = new ItemRequest("New Item", testListId, ItemStatus.AVAILABLE, 5, null, null);
 
-            when(itemListRepository.findById(testListId)).thenReturn(Optional.of(testList));
+            when(itemListRepository.findByIdWithLock(testListId)).thenReturn(Optional.of(testList));
             when(securityUtils.isAdmin()).thenReturn(false);
             when(workspaceAccessUtils.requireMembership(testWorkspaceId))
                     .thenThrow(new com.inventory.exception.WorkspaceNotFoundException(testWorkspaceId));
@@ -474,7 +482,7 @@ class ItemServiceImplTest {
         void createItem_asOwner_createsItem() throws IOException {
             ItemRequest request = new ItemRequest("Owner Item", testListId, ItemStatus.AVAILABLE, 3, null, null);
 
-            when(itemListRepository.findById(testListId)).thenReturn(Optional.of(testList));
+            when(itemListRepository.findByIdWithLock(testListId)).thenReturn(Optional.of(testList));
             when(securityUtils.isAdmin()).thenReturn(false);
             when(workspaceAccessUtils.requireMembership(testWorkspaceId)).thenReturn(ownerMember);
             when(itemRepository.save(any(Item.class))).thenAnswer(invocation -> invocation.getArgument(0));
@@ -482,6 +490,28 @@ class ItemServiceImplTest {
             Item result = itemService.createItem(request, null);
 
             assertThat(result.getName()).isEqualTo("Owner Item");
+        }
+
+        @Test
+        @DisplayName("should record ITEM_CREATED activity after saving item")
+        void createItem_recordsActivity() throws IOException {
+            ItemRequest request = new ItemRequest("Activity Item", testListId, ItemStatus.AVAILABLE, 1, null, null);
+            when(securityUtils.isAdmin()).thenReturn(true);
+            when(itemListRepository.findByIdWithLock(testListId)).thenReturn(Optional.of(testList));
+            when(itemRepository.save(any(Item.class))).thenAnswer(invocation -> {
+                Item saved = invocation.getArgument(0);
+                saved.setId(UUID.randomUUID());
+                return saved;
+            });
+
+            itemService.createItem(request, null);
+
+            verify(activityService).record(
+                    eq(testWorkspaceId),
+                    eq(ActivityEventType.ITEM_CREATED),
+                    eq("ITEM"),
+                    any(UUID.class),
+                    eq("Activity Item"));
         }
     }
 
@@ -495,7 +525,7 @@ class ItemServiceImplTest {
             ItemRequest request = new ItemRequest("Updated Name", testListId, ItemStatus.TO_VERIFY, 20, null, null);
             when(securityUtils.isAdmin()).thenReturn(true);
             when(itemRepository.findById(testId)).thenReturn(Optional.of(testItem));
-            when(itemListRepository.findById(testListId)).thenReturn(Optional.of(testList));
+            when(itemListRepository.findByIdWithLock(testListId)).thenReturn(Optional.of(testList));
             when(itemRepository.save(any(Item.class))).thenAnswer(invocation -> invocation.getArgument(0));
 
             Item result = itemService.updateItem(testId, request, null);
@@ -513,7 +543,7 @@ class ItemServiceImplTest {
             ItemRequest request = new ItemRequest("Updated Name", testListId, null, null, null, null);
             when(securityUtils.isAdmin()).thenReturn(true);
             when(itemRepository.findById(testId)).thenReturn(Optional.of(testItem));
-            when(itemListRepository.findById(testListId)).thenReturn(Optional.of(testList));
+            when(itemListRepository.findByIdWithLock(testListId)).thenReturn(Optional.of(testList));
             when(itemRepository.save(any(Item.class))).thenAnswer(invocation -> invocation.getArgument(0));
 
             Item result = itemService.updateItem(testId, request, null);
@@ -530,7 +560,7 @@ class ItemServiceImplTest {
 
             when(securityUtils.isAdmin()).thenReturn(true);
             when(itemRepository.findById(testId)).thenReturn(Optional.of(testItem));
-            when(itemListRepository.findById(testListId)).thenReturn(Optional.of(testList));
+            when(itemListRepository.findByIdWithLock(testListId)).thenReturn(Optional.of(testList));
             when(itemRepository.save(any(Item.class))).thenAnswer(invocation -> invocation.getArgument(0));
             when(imageProcessingService.processToWebP(any())).thenReturn(new byte[]{1, 2, 3});
             when(imageStorageService.upload(anyString(), any(byte[].class), anyString())).thenReturn("items/test-key.webp");
@@ -551,6 +581,25 @@ class ItemServiceImplTest {
 
             assertThatThrownBy(() -> itemService.updateItem(nonExistingId, request, null))
                     .isInstanceOf(ItemNotFoundException.class);
+        }
+
+        @Test
+        @DisplayName("should record ITEM_UPDATED activity after saving item")
+        void updateItem_recordsActivity() throws IOException {
+            ItemRequest request = new ItemRequest("Updated Name", testListId, ItemStatus.AVAILABLE, 5, null, null);
+            when(securityUtils.isAdmin()).thenReturn(true);
+            when(itemRepository.findById(testId)).thenReturn(Optional.of(testItem));
+            when(itemListRepository.findByIdWithLock(testListId)).thenReturn(Optional.of(testList));
+            when(itemRepository.save(any(Item.class))).thenAnswer(invocation -> invocation.getArgument(0));
+
+            itemService.updateItem(testId, request, null);
+
+            verify(activityService).record(
+                    eq(testWorkspaceId),
+                    eq(ActivityEventType.ITEM_UPDATED),
+                    eq("ITEM"),
+                    eq(testId),
+                    eq("Updated Name"));
         }
     }
 
@@ -607,6 +656,24 @@ class ItemServiceImplTest {
 
             assertThatThrownBy(() -> itemService.deleteItem(testId))
                     .isInstanceOf(ItemNotFoundException.class);
+        }
+
+        @Test
+        @DisplayName("should record ITEM_DELETED activity before deleting item")
+        void deleteItem_recordsActivity() {
+            when(itemRepository.findById(testId)).thenReturn(Optional.of(testItem));
+            when(securityUtils.isAdmin()).thenReturn(true);
+            doNothing().when(itemRepository).delete(testItem);
+
+            itemService.deleteItem(testId);
+
+            verify(activityService).record(
+                    eq(testWorkspaceId),
+                    eq(ActivityEventType.ITEM_DELETED),
+                    eq("ITEM"),
+                    eq(testId),
+                    eq("Test Item"));
+            verify(itemRepository).delete(testItem);
         }
     }
 
