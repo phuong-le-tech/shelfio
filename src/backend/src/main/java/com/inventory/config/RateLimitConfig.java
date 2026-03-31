@@ -53,6 +53,11 @@ public class RateLimitConfig {
         return new ApiRateLimiter(1, 3_600_000); // 1 export per hour
     }
 
+    @Bean("duplicateRateLimiter")
+    public ApiRateLimiter duplicateRateLimiter() {
+        return new ApiRateLimiter(20, 60_000); // 20 duplications per minute
+    }
+
     @Bean
     public FilterRegistrationBean<ApiRateLimitFilter> apiRateLimitFilter(
             @Qualifier("apiRateLimiter") ApiRateLimiter apiRateLimiter,

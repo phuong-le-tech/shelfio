@@ -57,6 +57,8 @@ public interface ItemRepository extends JpaRepository<Item, UUID>, JpaSpecificat
 
     List<Item> findAllByItemListIdOrderByCreatedAtAsc(UUID itemListId);
 
+    List<Item> findAllByItemListIdOrderByPositionAsc(UUID itemListId);
+
     Optional<Item> findByBarcodeAndItemList_User_Id(String barcode, UUID userId);
 
     // Workspace-scoped queries for dashboard stats

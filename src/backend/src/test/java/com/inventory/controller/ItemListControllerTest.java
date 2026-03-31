@@ -6,6 +6,8 @@ import com.inventory.dto.request.ItemListRequest;
 import com.inventory.dto.response.CsvExportResult;
 import com.inventory.exception.ExportLimitExceededException;
 import com.inventory.exception.ItemListNotFoundException;
+import com.inventory.exception.ListLimitExceededException;
+import com.inventory.exception.WorkspaceAccessDeniedException;
 import com.inventory.model.ItemList;
 import com.inventory.security.CustomUserDetails;
 import com.inventory.service.IItemListService;
@@ -465,6 +467,70 @@ class ItemListControllerTest {
                     .andExpect(status().isNotFound())
                     .andExpect(jsonPath("$.error.code").value(404))
                     .andExpect(jsonPath("$.error.message").value("Item list not found with id: " + nonExistingId));
+        }
+    }
+
+    @Nested
+    @DisplayName("POST /api/v1/lists/{id}/duplicate")
+    @SuppressWarnings("null")
+    class DuplicateListTests {
+
+        @Test
+        @DisplayName("should return 201 with duplicated list")
+        void duplicateList_success_returns201() throws Exception {
+            ItemList duplicated = new ItemList();
+            duplicated.setId(UUID.randomUUID());
+            duplicated.setName("Test List (Copie)");
+            duplicated.setDescription("A test list");
+            duplicated.setCategory("Electronics");
+            duplicated.setCreatedAt(LocalDateTime.of(2025, 1, 15, 10, 0));
+            duplicated.setUpdatedAt(LocalDateTime.of(2025, 1, 15, 10, 0));
+
+            when(itemListService.duplicateList(testListId)).thenReturn(duplicated);
+
+            mockMvc.perform(post("/api/v1/lists/{id}/duplicate", testListId)
+                            .with(user(userDetails)))
+                    .andExpect(status().isCreated())
+                    .andExpect(jsonPath("$.data.name").value("Test List (Copie)"))
+                    .andExpect(jsonPath("$.data.category").value("Electronics"));
+
+            verify(itemListService).duplicateList(testListId);
+        }
+
+        @Test
+        @DisplayName("should return 404 when source list not found")
+        void duplicateList_notFound_returns404() throws Exception {
+            UUID nonExistingId = UUID.randomUUID();
+            when(itemListService.duplicateList(nonExistingId))
+                    .thenThrow(new ItemListNotFoundException(nonExistingId));
+
+            mockMvc.perform(post("/api/v1/lists/{id}/duplicate", nonExistingId)
+                            .with(user(userDetails)))
+                    .andExpect(status().isNotFound())
+                    .andExpect(jsonPath("$.error.code").value(404));
+        }
+
+        @Test
+        @DisplayName("should return 403 when VIEWER tries to duplicate")
+        void duplicateList_viewer_returns403() throws Exception {
+            when(itemListService.duplicateList(testListId))
+                    .thenThrow(new WorkspaceAccessDeniedException("Viewers cannot duplicate lists"));
+
+            mockMvc.perform(post("/api/v1/lists/{id}/duplicate", testListId)
+                            .with(user(userDetails)))
+                    .andExpect(status().isForbidden());
+        }
+
+        @Test
+        @DisplayName("should return 403 when free-tier limit is reached")
+        void duplicateList_limitReached_returns403() throws Exception {
+            when(itemListService.duplicateList(testListId))
+                    .thenThrow(new ListLimitExceededException("Free plan limited to 5 lists."));
+
+            mockMvc.perform(post("/api/v1/lists/{id}/duplicate", testListId)
+                            .with(user(userDetails)))
+                    .andExpect(status().isForbidden())
+                    .andExpect(jsonPath("$.error.code").value(403));
         }
     }
 
