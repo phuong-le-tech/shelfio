@@ -3,6 +3,7 @@ package com.inventory.model;
 import com.inventory.enums.ActivityEventType;
 import jakarta.persistence.*;
 import lombok.Data;
+import org.hibernate.annotations.CreationTimestamp;
 import java.time.Instant;
 import java.util.UUID;
 
@@ -34,6 +35,7 @@ public class ActivityEvent {
     @Column(name = "entity_name")
     private String entityName;
 
-    @Column(name = "occurred_at", nullable = false)
+    @CreationTimestamp
+    @Column(name = "occurred_at", nullable = false, updatable = false)
     private Instant occurredAt;
 }
