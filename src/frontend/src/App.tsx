@@ -36,6 +36,7 @@ const AdminDashboardPage = lazy(() =>
 );
 const WorkspacesPage = lazy(() => import("./pages/WorkspacesPage"));
 const WorkspaceSettingsPage = lazy(() => import("./pages/WorkspaceSettingsPage"));
+const ActivityPage = lazy(() => import("./pages/ActivityPage"));
 const SettingsPage = lazy(() => import("./pages/SettingsPage"));
 const UpgradePage = lazy(() => import("./pages/UpgradePage"));
 const PaymentSuccess = lazy(() => import("./pages/PaymentSuccess"));
@@ -170,6 +171,16 @@ export default function App() {
             <ProtectedRoute>
               <Layout>
                 <WorkspaceSettingsPage />
+              </Layout>
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/workspaces/:id/activity"
+          element={
+            <ProtectedRoute>
+              <Layout>
+                <ActivityPage />
               </Layout>
             </ProtectedRoute>
           }

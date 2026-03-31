@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
-import { Plus, Settings, Trash2, Users } from 'lucide-react';
+import { Activity, Plus, Settings, Trash2, Users } from 'lucide-react';
 import { useWorkspace } from '../contexts/WorkspaceContext';
 import { useAuth } from '../contexts/AuthContext';
 import { workspaceApi } from '../services/workspaceApi';
@@ -145,15 +145,24 @@ export default function WorkspacesPage() {
                 </span>
                 <span>{workspace.listCount} liste{workspace.listCount > 1 ? 's' : ''}</span>
               </div>
-              {workspace.role === 'OWNER' && (
+              <div className="flex items-center gap-3 mt-3">
                 <Link
-                  to={`/workspaces/${workspace.id}/settings`}
-                  className="flex items-center gap-1 mt-3 text-sm text-brand hover:underline"
+                  to={`/workspaces/${workspace.id}/activity`}
+                  className="flex items-center gap-1 text-sm text-muted-foreground hover:underline"
                 >
-                  <Settings className="h-3.5 w-3.5" />
-                  Gérer
+                  <Activity className="h-3.5 w-3.5" />
+                  Activité
                 </Link>
-              )}
+                {workspace.role === 'OWNER' && (
+                  <Link
+                    to={`/workspaces/${workspace.id}/settings`}
+                    className="flex items-center gap-1 text-sm text-brand hover:underline"
+                  >
+                    <Settings className="h-3.5 w-3.5" />
+                    Gérer
+                  </Link>
+                )}
+              </div>
             </div>
           </BlurFade>
         ))}
