@@ -78,6 +78,8 @@ class ActivityServiceImplTest {
             assertThat(saved.getEntityType()).isEqualTo("item");
             assertThat(saved.getEntityId()).isEqualTo(entityId);
             assertThat(saved.getEntityName()).isEqualTo(entityName);
+            // @CreationTimestamp is set by Hibernate on flush, not by the service
+            assertThat(saved.getOccurredAt()).isNull();
         }
 
         @Test
@@ -163,6 +165,68 @@ class ActivityServiceImplTest {
             ActivityEventResponse response = result.getContent().get(0);
             assertThat(response.actorName()).isEqualTo("actor@example.com");
             assertThat(response.action()).isEqualTo(ActivityEventType.ITEM_CREATED);
+            assertThat(response.actorAvatarUrl()).isNull();
+        }
+
+        @Test
+        @DisplayName("maps actorAvatarUrl from actor pictureUrl")
+        void mapsActorAvatarUrl() {
+            UUID wId = UUID.randomUUID();
+            UUID actorId = UUID.randomUUID();
+
+            ActivityEvent event = new ActivityEvent();
+            event.setWorkspaceId(wId);
+            event.setActorId(actorId);
+            event.setAction(ActivityEventType.ITEM_CREATED);
+            event.setEntityType("ITEM");
+
+            User actor = new User();
+            actor.setId(actorId);
+            actor.setEmail("actor@example.com");
+            actor.setPictureUrl("https://example.com/avatar.jpg");
+
+            Page<ActivityEvent> page = new PageImpl<>(List.of(event), PageRequest.of(0, 20), 1);
+            when(activityEventRepository.findFiltered(eq(wId), isNull(), isNull(), isNull(), isNull(), any(Pageable.class)))
+                    .thenReturn(page);
+            when(userRepository.findAllById(anyCollection())).thenReturn(List.of(actor));
+
+            Page<ActivityEventResponse> result = activityService.getActivity(wId, null, null, null, null, PageRequest.of(0, 20));
+
+            assertThat(result.getContent().get(0).actorAvatarUrl()).isEqualTo("https://example.com/avatar.jpg");
+        }
+
+        @Test
+        @DisplayName("resolves shared actor in a single batch call")
+        void resolvesSharedActorInSingleBatchCall() {
+            UUID wId = UUID.randomUUID();
+            UUID actorId = UUID.randomUUID();
+
+            ActivityEvent event1 = new ActivityEvent();
+            event1.setWorkspaceId(wId);
+            event1.setActorId(actorId);
+            event1.setAction(ActivityEventType.ITEM_CREATED);
+            event1.setEntityType("ITEM");
+
+            ActivityEvent event2 = new ActivityEvent();
+            event2.setWorkspaceId(wId);
+            event2.setActorId(actorId);
+            event2.setAction(ActivityEventType.ITEM_UPDATED);
+            event2.setEntityType("ITEM");
+
+            User actor = new User();
+            actor.setId(actorId);
+            actor.setEmail("actor@example.com");
+
+            Page<ActivityEvent> page = new PageImpl<>(List.of(event1, event2), PageRequest.of(0, 20), 2);
+            when(activityEventRepository.findFiltered(any(), any(), any(), any(), any(), any())).thenReturn(page);
+            when(userRepository.findAllById(anyCollection())).thenReturn(List.of(actor));
+
+            Page<ActivityEventResponse> result = activityService.getActivity(wId, null, null, null, null, PageRequest.of(0, 20));
+
+            assertThat(result.getContent()).hasSize(2);
+            assertThat(result.getContent()).allMatch(r -> r.actorName().equals("actor@example.com"));
+            // Verify single batch call, not one per event
+            verify(userRepository, times(1)).findAllById(anyCollection());
         }
 
         @Test
