@@ -14,6 +14,7 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Instant;
@@ -34,7 +35,7 @@ public class ActivityServiceImpl implements IActivityService {
     private final SecurityUtils securityUtils;
 
     @Override
-    @Transactional
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
     public void record(UUID workspaceId, ActivityEventType action,
                        String entityType, UUID entityId, String entityName) {
         try {
@@ -46,11 +47,13 @@ public class ActivityServiceImpl implements IActivityService {
             event.setAction(action);
             event.setEntityType(entityType);
             event.setEntityId(entityId);
-            event.setEntityName(entityName);
+            event.setEntityName(entityName != null && entityName.length() > 255
+                    ? entityName.substring(0, 255) : entityName);
 
             activityEventRepository.save(event);
         } catch (Exception e) {
-            log.error("Failed to record activity event: workspace={} action={}", workspaceId, action, e);
+            log.error("Failed to record activity event: workspace={} action={} entityType={} entityId={}",
+                    workspaceId, action, entityType, entityId, e);
         }
     }
 
