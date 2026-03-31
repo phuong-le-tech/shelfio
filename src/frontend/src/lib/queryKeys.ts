@@ -20,6 +20,10 @@ export const queryKeys = {
     members: (id: string) => ['workspaces', 'members', id] as const,
     pendingInvitations: () => ['workspaces', 'invitations', 'pending'] as const,
   },
+  activity: {
+    feed: (workspaceId: string, filters: object) =>
+      ['activity', 'feed', workspaceId, filters] as const,
+  },
   admin: {
     users: (params: object) => ['admin', 'users', params] as const,
     userDetail: (id: string) => ['admin', 'users', 'detail', id] as const,
