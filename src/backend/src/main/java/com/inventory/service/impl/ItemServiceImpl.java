@@ -2,6 +2,7 @@ package com.inventory.service.impl;
 
 import com.inventory.dto.request.ItemRequest;
 import com.inventory.dto.request.ItemSearchCriteria;
+import com.inventory.dto.request.ReorderItemsRequest;
 import com.inventory.dto.response.DashboardStats;
 import com.inventory.enums.ItemStatus;
 import com.inventory.enums.WorkspaceRole;
@@ -32,6 +33,7 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -119,6 +121,7 @@ public class ItemServiceImpl implements IItemService {
         item.setStock(request.stock() != null ? request.stock() : 0);
         item.setBarcode(request.barcode());
         item.setCustomFieldValues(request.customFieldValues());
+        item.setPosition(itemRepository.findNextPositionForList(itemList.getId()));
 
         // Save first to get the generated ID
         Item savedItem = itemRepository.save(item);
@@ -220,6 +223,47 @@ public class ItemServiceImpl implements IItemService {
     }
 
     @Override
+    @Transactional
+    public void reorderItems(@NonNull ReorderItemsRequest request) {
+        // Verify list ownership and write access
+        findListWithOwnershipCheck(Objects.requireNonNull(request.getListId()));
+
+        List<UUID> orderedIds = Objects.requireNonNull(request.getOrderedIds());
+        if (orderedIds.isEmpty()) return;
+        if (orderedIds.stream().distinct().count() != orderedIds.size()) {
+            throw new IllegalArgumentException("Duplicate IDs in reorder request");
+        }
+
+        // Fetch all items for this list
+        List<Item> items = itemRepository.findAllByItemListIdOrderByCreatedAtAsc(request.getListId());
+        Map<UUID, Item> itemMap = items.stream().collect(Collectors.toMap(Item::getId, i -> i));
+
+        Set<UUID> orderedSet = new java.util.LinkedHashSet<>(orderedIds);
+
+        // Assign positions for explicitly ordered items
+        List<Item> toSave = new ArrayList<>();
+        for (int i = 0; i < orderedIds.size(); i++) {
+            UUID itemId = orderedIds.get(i);
+            Item item = itemMap.get(itemId);
+            if (item != null) {
+                item.setPosition(i);
+                toSave.add(item);
+            }
+        }
+
+        // Re-index remaining items after the explicit block to close any gaps
+        int nextPosition = orderedIds.size();
+        for (Item item : items) {
+            if (!orderedSet.contains(item.getId())) {
+                item.setPosition(nextPosition++);
+                toSave.add(item);
+            }
+        }
+
+        itemRepository.saveAll(toSave);
+    }
+
+    @Override
     @Transactional(readOnly = true)
     public DashboardStats getDashboardStats() {
         if (securityUtils.isAdmin()) {
@@ -295,7 +339,7 @@ public class ItemServiceImpl implements IItemService {
     }
 
     private ItemList findListWithOwnershipCheck(UUID listId) {
-        ItemList itemList = itemListRepository.findById(listId)
+        ItemList itemList = itemListRepository.findByIdWithLock(listId)
                 .orElseThrow(() -> new ItemListNotFoundException(listId));
         if (!securityUtils.isAdmin()) {
             // Verify workspace membership

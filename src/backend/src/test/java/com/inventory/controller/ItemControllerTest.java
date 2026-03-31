@@ -630,4 +630,72 @@ class ItemControllerTest {
                     .andExpect(status().isForbidden());
         }
     }
+
+    @Nested
+    @DisplayName("PATCH /api/v1/items/reorder")
+    class ReorderItemsTests {
+
+        @Test
+        @DisplayName("should reorder items and return 204")
+        void reorderItems_validRequest_returns204() throws Exception {
+            UUID listId = UUID.randomUUID();
+            List<UUID> orderedIds = List.of(UUID.randomUUID(), UUID.randomUUID());
+            doNothing().when(itemService).reorderItems(any());
+
+            mockMvc.perform(patch("/api/v1/items/reorder")
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(objectMapper.writeValueAsString(Map.of("listId", listId, "orderedIds", orderedIds)))
+                            .with(user(new CustomUserDetails(UUID.randomUUID(), "test@test.com", "USER"))))
+                    .andExpect(status().isNoContent());
+        }
+
+        @Test
+        @DisplayName("should return 400 when listId is missing")
+        void reorderItems_missingListId_returns400() throws Exception {
+            List<UUID> orderedIds = List.of(UUID.randomUUID());
+
+            mockMvc.perform(patch("/api/v1/items/reorder")
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(objectMapper.writeValueAsString(Map.of("orderedIds", orderedIds)))
+                            .with(user(new CustomUserDetails(UUID.randomUUID(), "test@test.com", "USER"))))
+                    .andExpect(status().isBadRequest());
+        }
+
+        @Test
+        @DisplayName("should return 400 when orderedIds is empty")
+        void reorderItems_emptyOrderedIds_returns400() throws Exception {
+            UUID listId = UUID.randomUUID();
+
+            mockMvc.perform(patch("/api/v1/items/reorder")
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(objectMapper.writeValueAsString(Map.of("listId", listId, "orderedIds", List.of())))
+                            .with(user(new CustomUserDetails(UUID.randomUUID(), "test@test.com", "USER"))))
+                    .andExpect(status().isBadRequest());
+        }
+
+        @Test
+        @DisplayName("should return 403 when unauthenticated")
+        void reorderItems_unauthenticated_returns403() throws Exception {
+            mockMvc.perform(patch("/api/v1/items/reorder")
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(objectMapper.writeValueAsString(
+                                    Map.of("listId", UUID.randomUUID(), "orderedIds", List.of(UUID.randomUUID())))))
+                    .andExpect(status().isForbidden());
+        }
+
+        @Test
+        @DisplayName("should return 403 when user is a VIEWER")
+        void reorderItems_viewer_returns403() throws Exception {
+            UUID listId = UUID.randomUUID();
+            List<UUID> orderedIds = List.of(UUID.randomUUID(), UUID.randomUUID());
+            doThrow(new com.inventory.exception.WorkspaceAccessDeniedException("Viewers cannot create or update items"))
+                    .when(itemService).reorderItems(any());
+
+            mockMvc.perform(patch("/api/v1/items/reorder")
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(objectMapper.writeValueAsString(Map.of("listId", listId, "orderedIds", orderedIds)))
+                            .with(user(new CustomUserDetails(UUID.randomUUID(), "viewer@test.com", "USER"))))
+                    .andExpect(status().isForbidden());
+        }
+    }
 }

@@ -57,6 +57,9 @@ public class Item {
     @Column(name = "image_key", length = 500)
     private String imageKey;
 
+    @Column(nullable = false)
+    private Integer position = 0;
+
     @CreationTimestamp
     @Column(name = "created_at")
     private LocalDateTime createdAt;

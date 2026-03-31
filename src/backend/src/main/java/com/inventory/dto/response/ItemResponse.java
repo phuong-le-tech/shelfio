@@ -17,6 +17,7 @@ public record ItemResponse(
         String barcode,
         String imageUrl,
         Map<String, Object> customFieldValues,
+        Integer position,
         LocalDateTime createdAt,
         LocalDateTime updatedAt) {
 
@@ -34,6 +35,7 @@ public record ItemResponse(
                 item.getCustomFieldValues() != null
                         ? item.getCustomFieldValues()
                         : Map.of(),
+                item.getPosition(),
                 item.getCreatedAt(),
                 item.getUpdatedAt());
     }
