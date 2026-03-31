@@ -23,7 +23,9 @@ import com.inventory.repository.UserRepository;
 import com.inventory.repository.WorkspaceRepository;
 import com.inventory.security.SecurityUtils;
 import com.inventory.security.WorkspaceAccessUtils;
+import com.inventory.enums.ActivityEventType;
 import com.inventory.service.CustomFieldValidator;
+import com.inventory.service.IActivityService;
 import com.inventory.service.IItemListService;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
@@ -55,6 +57,7 @@ public class ItemListServiceImpl implements IItemListService {
     private final WorkspaceAccessUtils workspaceAccessUtils;
     private final CustomFieldValidator customFieldValidator;
     private final boolean premiumEnabled;
+    private final IActivityService activityService;
 
     public ItemListServiceImpl(ItemListRepository itemListRepository,
                                ItemRepository itemRepository,
@@ -63,7 +66,8 @@ public class ItemListServiceImpl implements IItemListService {
                                SecurityUtils securityUtils,
                                WorkspaceAccessUtils workspaceAccessUtils,
                                CustomFieldValidator customFieldValidator,
-                               @Value("${app.premium.enabled:true}") boolean premiumEnabled) {
+                               @Value("${app.premium.enabled:true}") boolean premiumEnabled,
+                               IActivityService activityService) {
         this.itemListRepository = itemListRepository;
         this.itemRepository = itemRepository;
         this.userRepository = userRepository;
@@ -72,6 +76,7 @@ public class ItemListServiceImpl implements IItemListService {
         this.workspaceAccessUtils = workspaceAccessUtils;
         this.customFieldValidator = customFieldValidator;
         this.premiumEnabled = premiumEnabled;
+        this.activityService = activityService;
     }
 
     private @NonNull UUID requireCurrentUserId() {
@@ -172,7 +177,10 @@ public class ItemListServiceImpl implements IItemListService {
         itemList.setCustomFieldDefinitions(request.customFieldDefinitions());
         itemList.setUser(user);
         itemList.setWorkspace(workspace);
-        return itemListRepository.save(itemList);
+        ItemList saved = itemListRepository.save(itemList);
+        activityService.record(saved.getWorkspace().getId(),
+                ActivityEventType.LIST_CREATED, "LIST", saved.getId(), saved.getName());
+        return saved;
     }
 
     @Override
@@ -194,7 +202,10 @@ public class ItemListServiceImpl implements IItemListService {
         itemList.setDescription(request.description());
         itemList.setCategory(request.category());
         itemList.setCustomFieldDefinitions(request.customFieldDefinitions());
-        return itemListRepository.save(itemList);
+        ItemList saved = itemListRepository.save(itemList);
+        activityService.record(saved.getWorkspace().getId(),
+                ActivityEventType.LIST_UPDATED, "LIST", saved.getId(), saved.getName());
+        return saved;
     }
 
     @Override
@@ -213,7 +224,11 @@ public class ItemListServiceImpl implements IItemListService {
         // Only workspace OWNER can delete lists
         workspaceAccessUtils.requireRole(itemList.getWorkspace().getId(), WorkspaceRole.OWNER);
 
+        UUID wsId = itemList.getWorkspace().getId();
+        UUID listId = itemList.getId();
+        String listName = itemList.getName();
         itemListRepository.delete(itemList);
+        activityService.record(wsId, ActivityEventType.LIST_DELETED, "LIST", listId, listName);
     }
 
     @Override
