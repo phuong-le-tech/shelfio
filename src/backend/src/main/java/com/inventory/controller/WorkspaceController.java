@@ -3,6 +3,8 @@ package com.inventory.controller;
 import com.inventory.dto.request.InviteRequest;
 import com.inventory.dto.request.UpdateMemberRoleRequest;
 import com.inventory.dto.request.WorkspaceRequest;
+import com.inventory.dto.response.ActivityEventResponse;
+import com.inventory.dto.response.PageResponse;
 import com.inventory.dto.response.WorkspaceInvitationResponse;
 import com.inventory.dto.response.WorkspaceMemberResponse;
 import com.inventory.dto.response.WorkspaceResponse;
@@ -10,9 +12,12 @@ import com.inventory.enums.WorkspaceRole;
 import com.inventory.model.Workspace;
 import com.inventory.model.WorkspaceMember;
 import com.inventory.security.SecurityUtils;
+import com.inventory.service.IActivityService;
 import com.inventory.service.IWorkspaceService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -27,6 +32,7 @@ import java.util.UUID;
 public class WorkspaceController {
 
     private final IWorkspaceService workspaceService;
+    private final IActivityService activityService;
     private final SecurityUtils securityUtils;
 
     @GetMapping
@@ -85,6 +91,17 @@ public class WorkspaceController {
     public ResponseEntity<Void> deleteWorkspace(@PathVariable UUID id) {
         workspaceService.deleteWorkspace(id);
         return ResponseEntity.noContent().build();
+    }
+
+    @GetMapping("/{id}/activity")
+    public ResponseEntity<PageResponse<ActivityEventResponse>> getActivityFeed(
+            @PathVariable UUID id,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "20") int size) {
+        workspaceService.getWorkspaceById(id); // membership check
+        Page<ActivityEventResponse> events = activityService.getActivity(
+                id, null, null, null, null, PageRequest.of(page, size));
+        return ResponseEntity.ok(PageResponse.from(events));
     }
 
     @GetMapping("/{id}/members")
