@@ -1,0 +1,7 @@
+package com.inventory.enums;
+
+public enum ActivityEventType {
+    ITEM_CREATED, ITEM_UPDATED, ITEM_DELETED,
+    LIST_CREATED, LIST_UPDATED, LIST_DELETED,
+    MEMBER_ADDED, MEMBER_REMOVED, MEMBER_ROLE_CHANGED
+}
