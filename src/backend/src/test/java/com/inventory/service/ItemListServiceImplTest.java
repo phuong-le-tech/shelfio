@@ -11,6 +11,7 @@ import com.inventory.exception.ExportLimitExceededException;
 import com.inventory.exception.ItemListNotFoundException;
 import com.inventory.exception.ListLimitExceededException;
 import com.inventory.exception.UnauthorizedException;
+import com.inventory.exception.WorkspaceAccessDeniedException;
 import com.inventory.model.Item;
 import com.inventory.model.ItemList;
 import com.inventory.model.User;
@@ -377,6 +378,225 @@ class ItemListServiceImplTest {
 
             assertThat(result.getName()).isEqualTo("Admin List");
             verify(itemListRepository, never()).countByUserId(any());
+        }
+    }
+
+    @Nested
+    @DisplayName("duplicateList")
+    class DuplicateListTests {
+
+        private Item sourceItem;
+
+        @BeforeEach
+        void setUpItems() {
+            sourceItem = new Item();
+            sourceItem.setName("Widget");
+            sourceItem.setStatus(ItemStatus.AVAILABLE);
+            sourceItem.setStock(3);
+            sourceItem.setBarcode("123456");
+            sourceItem.setPosition(0);
+            sourceItem.setCustomFieldValues(Map.of("color", "red"));
+            sourceItem.setItemList(testList);
+        }
+
+        private void stubGetListById() {
+            when(securityUtils.isAdmin()).thenReturn(false);
+            when(workspaceAccessUtils.getAccessibleWorkspaceIds()).thenReturn(List.of(testWorkspaceId));
+            when(itemListRepository.findByIdAndWorkspaceIdIn(testListId, List.of(testWorkspaceId)))
+                    .thenReturn(Optional.of(testList));
+        }
+
+        @Test
+        @DisplayName("should clone list with '(Copie)' suffix and copy all items")
+        void duplicate_success_clonesListAndItems() {
+            testUser.setRole(Role.PREMIUM_USER);
+
+            WorkspaceMember editorMember = new WorkspaceMember();
+            editorMember.setRole(WorkspaceRole.EDITOR);
+
+            stubGetListById();
+            when(workspaceAccessUtils.requireMembership(testWorkspaceId)).thenReturn(editorMember);
+            when(securityUtils.getCurrentUserId()).thenReturn(Optional.of(testUserId));
+            when(userRepository.findByIdWithLock(testUserId)).thenReturn(Optional.of(testUser));
+            when(workspaceRepository.findByIdWithLock(testWorkspaceId)).thenReturn(Optional.of(testWorkspace));
+            when(itemRepository.findAllByItemListIdOrderByPositionAsc(testListId))
+                    .thenReturn(List.of(sourceItem));
+            when(itemListRepository.save(any(ItemList.class))).thenAnswer(inv -> {
+                ItemList saved = inv.getArgument(0);
+                saved.setId(UUID.randomUUID());
+                return saved;
+            });
+
+            ItemList result = itemListService.duplicateList(testListId);
+
+            assertThat(result.getName()).isEqualTo("Test List (Copie)");
+            assertThat(result.getCategory()).isEqualTo("Electronics");
+            assertThat(result.getWorkspace()).isEqualTo(testWorkspace);
+            verify(itemRepository).saveAll(any());
+        }
+
+        @Test
+        @DisplayName("VIEWER role should be denied")
+        void duplicate_viewer_throwsWorkspaceAccessDeniedException() {
+            WorkspaceMember viewerMember = new WorkspaceMember();
+            viewerMember.setRole(WorkspaceRole.VIEWER);
+
+            stubGetListById();
+            when(workspaceAccessUtils.requireMembership(testWorkspaceId)).thenReturn(viewerMember);
+
+            assertThatThrownBy(() -> itemListService.duplicateList(testListId))
+                    .isInstanceOf(WorkspaceAccessDeniedException.class);
+        }
+
+        @Test
+        @DisplayName("free user at limit should be blocked")
+        void duplicate_freeUserAtLimit_throwsListLimitExceededException() {
+            testUser.setRole(Role.USER);
+
+            WorkspaceMember editorMember = new WorkspaceMember();
+            editorMember.setRole(WorkspaceRole.EDITOR);
+
+            stubGetListById();
+            when(workspaceAccessUtils.requireMembership(testWorkspaceId)).thenReturn(editorMember);
+            when(securityUtils.getCurrentUserId()).thenReturn(Optional.of(testUserId));
+            when(userRepository.findByIdWithLock(testUserId)).thenReturn(Optional.of(testUser));
+            when(workspaceRepository.findByIdWithLock(testWorkspaceId)).thenReturn(Optional.of(testWorkspace));
+            when(itemListRepository.countByUserId(testUserId)).thenReturn(5L);
+
+            assertThatThrownBy(() -> itemListService.duplicateList(testListId))
+                    .isInstanceOf(ListLimitExceededException.class)
+                    .hasMessageContaining("5 lists");
+        }
+
+        @Test
+        @DisplayName("free user under limit should succeed")
+        void duplicate_freeUserUnderLimit_succeeds() {
+            testUser.setRole(Role.USER);
+
+            WorkspaceMember editorMember = new WorkspaceMember();
+            editorMember.setRole(WorkspaceRole.EDITOR);
+
+            stubGetListById();
+            when(workspaceAccessUtils.requireMembership(testWorkspaceId)).thenReturn(editorMember);
+            when(securityUtils.getCurrentUserId()).thenReturn(Optional.of(testUserId));
+            when(userRepository.findByIdWithLock(testUserId)).thenReturn(Optional.of(testUser));
+            when(workspaceRepository.findByIdWithLock(testWorkspaceId)).thenReturn(Optional.of(testWorkspace));
+            when(itemListRepository.countByUserId(testUserId)).thenReturn(3L);
+            when(itemRepository.findAllByItemListIdOrderByPositionAsc(testListId)).thenReturn(List.of());
+            when(itemListRepository.save(any(ItemList.class))).thenAnswer(inv -> {
+                ItemList saved = inv.getArgument(0);
+                saved.setId(UUID.randomUUID());
+                return saved;
+            });
+
+            ItemList result = itemListService.duplicateList(testListId);
+
+            assertThat(result.getName()).isEqualTo("Test List (Copie)");
+        }
+
+        @Test
+        @DisplayName("admin should bypass role and limit checks")
+        void duplicate_admin_bypassesChecks() {
+            testUser.setRole(Role.ADMIN);
+
+            when(securityUtils.isAdmin()).thenReturn(true);
+            when(itemListRepository.findById(testListId)).thenReturn(Optional.of(testList));
+            when(securityUtils.getCurrentUserId()).thenReturn(Optional.of(testUserId));
+            when(userRepository.findByIdWithLock(testUserId)).thenReturn(Optional.of(testUser));
+            when(workspaceRepository.findByIdWithLock(testWorkspaceId)).thenReturn(Optional.of(testWorkspace));
+            when(itemRepository.findAllByItemListIdOrderByPositionAsc(testListId)).thenReturn(List.of());
+            when(itemListRepository.save(any(ItemList.class))).thenAnswer(inv -> {
+                ItemList saved = inv.getArgument(0);
+                saved.setId(UUID.randomUUID());
+                return saved;
+            });
+
+            ItemList result = itemListService.duplicateList(testListId);
+
+            assertThat(result.getName()).isEqualTo("Test List (Copie)");
+            verify(workspaceAccessUtils, never()).requireMembership(any());
+            verify(itemListRepository, never()).countByUserId(any());
+        }
+
+        @Test
+        @DisplayName("source list not found should throw ItemListNotFoundException")
+        void duplicate_listNotFound_throwsNotFoundException() {
+            UUID nonExistingId = UUID.randomUUID();
+            when(securityUtils.isAdmin()).thenReturn(true);
+            when(itemListRepository.findById(nonExistingId)).thenReturn(Optional.empty());
+
+            assertThatThrownBy(() -> itemListService.duplicateList(nonExistingId))
+                    .isInstanceOf(ItemListNotFoundException.class);
+        }
+
+        @Test
+        @DisplayName("item fields should be copied correctly — images skipped")
+        void duplicate_itemFieldsCopiedCorrectly() {
+            testUser.setRole(Role.PREMIUM_USER);
+
+            WorkspaceMember editorMember = new WorkspaceMember();
+            editorMember.setRole(WorkspaceRole.EDITOR);
+
+            stubGetListById();
+            when(workspaceAccessUtils.requireMembership(testWorkspaceId)).thenReturn(editorMember);
+            when(securityUtils.getCurrentUserId()).thenReturn(Optional.of(testUserId));
+            when(userRepository.findByIdWithLock(testUserId)).thenReturn(Optional.of(testUser));
+            when(workspaceRepository.findByIdWithLock(testWorkspaceId)).thenReturn(Optional.of(testWorkspace));
+            when(itemRepository.findAllByItemListIdOrderByPositionAsc(testListId))
+                    .thenReturn(List.of(sourceItem));
+            when(itemListRepository.save(any(ItemList.class))).thenAnswer(inv -> {
+                ItemList saved = inv.getArgument(0);
+                saved.setId(UUID.randomUUID());
+                return saved;
+            });
+
+            itemListService.duplicateList(testListId);
+
+            verify(itemRepository).saveAll(argThat(items -> {
+                List<Item> itemList = new java.util.ArrayList<>();
+                items.forEach(itemList::add);
+                assertThat(itemList).hasSize(1);
+                Item copy = itemList.get(0);
+                assertThat(copy.getName()).isEqualTo("Widget");
+                assertThat(copy.getStatus()).isEqualTo(ItemStatus.AVAILABLE);
+                assertThat(copy.getStock()).isEqualTo(3);
+                assertThat(copy.getBarcode()).isEqualTo("123456");
+                assertThat(copy.getPosition()).isEqualTo(0);
+                assertThat(copy.getCustomFieldValues()).containsEntry("color", "red");
+                assertThat(copy.getImageKey()).isNull();
+                return true;
+            }));
+        }
+
+        @Test
+        @DisplayName("list with no items should produce an empty clone")
+        void duplicate_emptyList_producesEmptyClone() {
+            testUser.setRole(Role.PREMIUM_USER);
+
+            WorkspaceMember editorMember = new WorkspaceMember();
+            editorMember.setRole(WorkspaceRole.EDITOR);
+
+            stubGetListById();
+            when(workspaceAccessUtils.requireMembership(testWorkspaceId)).thenReturn(editorMember);
+            when(securityUtils.getCurrentUserId()).thenReturn(Optional.of(testUserId));
+            when(userRepository.findByIdWithLock(testUserId)).thenReturn(Optional.of(testUser));
+            when(workspaceRepository.findByIdWithLock(testWorkspaceId)).thenReturn(Optional.of(testWorkspace));
+            when(itemRepository.findAllByItemListIdOrderByPositionAsc(testListId)).thenReturn(List.of());
+            when(itemListRepository.save(any(ItemList.class))).thenAnswer(inv -> {
+                ItemList saved = inv.getArgument(0);
+                saved.setId(UUID.randomUUID());
+                return saved;
+            });
+
+            ItemList result = itemListService.duplicateList(testListId);
+
+            assertThat(result.getName()).isEqualTo("Test List (Copie)");
+            verify(itemRepository).saveAll(argThat(items -> {
+                List<Item> itemList = new java.util.ArrayList<>();
+                items.forEach(itemList::add);
+                assertThat(itemList).isEmpty();
+                return true;
+            }));
         }
     }
 

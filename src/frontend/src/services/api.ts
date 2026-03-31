@@ -38,6 +38,11 @@ export const listsApi = {
     await http.delete(`/lists/${id}`);
   },
 
+  duplicate: async (id: string, signal?: AbortSignal): Promise<ItemList> => {
+    const response = await http.post<ItemList>(`/lists/${id}/duplicate`, {}, { signal });
+    return response.data;
+  },
+
   exportCsv: async (id: string): Promise<{ blob: Blob; filename: string }> => {
     const response = await http.get(`/lists/${id}/export`, {
       responseType: 'blob',

@@ -22,4 +22,6 @@ public interface IItemListService {
     void deleteList(@NonNull UUID id);
 
     CsvExportResult exportListAsCsv(@NonNull UUID id);
+
+    ItemList duplicateList(@NonNull UUID id);
 }

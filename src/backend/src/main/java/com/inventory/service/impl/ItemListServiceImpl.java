@@ -36,6 +36,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.nio.charset.StandardCharsets;
 import java.time.LocalDate;
 import java.util.Comparator;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -278,6 +279,71 @@ public class ItemListServiceImpl implements IItemListService {
         String filename = sanitizedName + "_" + LocalDate.now() + ".csv";
 
         return new CsvExportResult(csv.toString().getBytes(StandardCharsets.UTF_8), filename);
+    }
+
+    @Override
+    @Transactional
+    @SuppressWarnings("null")
+    public ItemList duplicateList(@NonNull UUID id) {
+        // Ownership check — throws 404 if not accessible
+        ItemList source = getListById(id);
+
+        // Viewer guard
+        if (!securityUtils.isAdmin()) {
+            WorkspaceMember member = workspaceAccessUtils.requireMembership(source.getWorkspace().getId());
+            if (member.getRole() == WorkspaceRole.VIEWER) {
+                throw new WorkspaceAccessDeniedException("Viewers cannot duplicate lists");
+            }
+        }
+
+        UUID userId = requireCurrentUserId();
+
+        // Pessimistic locks to serialize concurrent creation (same pattern as createList)
+        User user = userRepository.findByIdWithLock(userId)
+                .orElseThrow(() -> new UnauthorizedException("User not found"));
+        workspaceRepository.findByIdWithLock(source.getWorkspace().getId())
+                .orElseThrow(() -> new WorkspaceNotFoundException(source.getWorkspace().getId()));
+
+        // Free-tier limit check
+        if (premiumEnabled && user.getRole() == Role.USER) {
+            long count = itemListRepository.countByUserId(userId);
+            if (count >= 5) {
+                throw new ListLimitExceededException(
+                        "Free plan limited to 5 lists. Upgrade to Premium for unlimited lists.");
+            }
+        }
+
+        // Clone the list
+        ItemList copy = new ItemList();
+        // Clamp to 100 chars to match the API-layer name validation constraint
+        String rawName = source.getName() + " (Copie)";
+        copy.setName(rawName.length() > 100 ? rawName.substring(0, 100) : rawName);
+        copy.setDescription(source.getDescription());
+        copy.setCategory(source.getCategory());
+        copy.setCustomFieldDefinitions(source.getCustomFieldDefinitions());
+        // Deliberately attribute the copy to the calling user (not the source list's owner)
+        // so the free-tier limit check above, which counts by userId, remains consistent.
+        copy.setUser(user);
+        copy.setWorkspace(source.getWorkspace());
+        ItemList savedCopy = itemListRepository.save(copy);
+
+        // Clone items (skip images — R2 keys are scoped to original item UUIDs)
+        List<Item> sourceItems = itemRepository.findAllByItemListIdOrderByPositionAsc(source.getId());
+        List<Item> copiedItems = sourceItems.stream().map(src -> {
+            Item item = new Item();
+            item.setName(src.getName());
+            item.setStatus(src.getStatus());
+            item.setStock(src.getStock());
+            item.setBarcode(src.getBarcode());
+            // Defensive copy — prevents shared-reference aliasing between source and clone
+            item.setCustomFieldValues(src.getCustomFieldValues() != null ? new HashMap<>(src.getCustomFieldValues()) : null);
+            item.setPosition(src.getPosition());
+            item.setItemList(savedCopy);
+            return item;
+        }).toList();
+        itemRepository.saveAll(copiedItems);
+
+        return savedCopy;
     }
 
     private String formatFieldValue(Object value) {

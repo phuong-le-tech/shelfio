@@ -1,6 +1,7 @@
 import { useState, useMemo } from 'react';
 import { Link } from 'react-router-dom';
-import { Plus, Trash2, FolderOpen, Crown, Search, MoreHorizontal, Pencil } from 'lucide-react';
+import { Plus, Trash2, FolderOpen, Crown, Search, MoreHorizontal, Pencil, Copy } from 'lucide-react';
+import { getApiErrorMessage } from '../utils/errorUtils';
 import { AnimatePresence } from 'motion/react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { listsApi } from '../services/api';
@@ -76,6 +77,17 @@ export default function ListsPage() {
       );
     });
   }, [lists, searchQuery]);
+
+  const duplicateMutation = useMutation({
+    mutationFn: (id: string) => listsApi.duplicate(id),
+    onSuccess: () => {
+      showToast('Liste dupliquée', 'success');
+      queryClient.invalidateQueries({ queryKey: queryKeys.lists.all });
+    },
+    onError: (err) => {
+      showToast(getApiErrorMessage(err, 'Échec de la duplication'), 'error');
+    },
+  });
 
   const deleteMutation = useMutation({
     mutationFn: (id: string) => listsApi.delete(id),
@@ -239,6 +251,13 @@ export default function ListsPage() {
                           <Pencil className="h-4 w-4 mr-2" />
                           Modifier
                         </Link>
+                      </DropdownMenuItem>
+                      <DropdownMenuItem
+                        onClick={() => duplicateMutation.mutate(list.id)}
+                        disabled={duplicateMutation.isPending && duplicateMutation.variables === list.id}
+                      >
+                        <Copy className="h-4 w-4 mr-2" />
+                        Dupliquer
                       </DropdownMenuItem>
                       <DropdownMenuItem
                         className="text-destructive focus:text-destructive"

@@ -27,6 +27,7 @@ import com.inventory.model.ItemList;
 
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 @SpringBootTest
@@ -133,6 +134,13 @@ class AuthorizationBoundaryTest {
         @DisplayName("GET /api/v1/admin/users without token should be rejected")
         void admin_noToken_rejected() throws Exception {
             mockMvc.perform(get("/api/v1/admin/users"))
+                    .andExpect(status().isForbidden());
+        }
+
+        @Test
+        @DisplayName("POST /api/v1/lists/{id}/duplicate without token should be rejected")
+        void duplicate_noToken_rejected() throws Exception {
+            mockMvc.perform(post("/api/v1/lists/{id}/duplicate", userAList.getId()))
                     .andExpect(status().isForbidden());
         }
     }

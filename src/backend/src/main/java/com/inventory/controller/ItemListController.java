@@ -4,10 +4,14 @@ import com.inventory.dto.request.ItemListRequest;
 import com.inventory.dto.response.CsvExportResult;
 import com.inventory.dto.response.ItemListResponse;
 import com.inventory.dto.response.PageResponse;
+import com.inventory.exception.RateLimitExceededException;
 import com.inventory.model.ItemList;
+import com.inventory.security.ApiRateLimiter;
+import com.inventory.security.CustomUserDetails;
 import com.inventory.service.IItemListService;
 import com.inventory.service.ImageStorageService;
 import jakarta.validation.Valid;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
@@ -19,6 +23,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.lang.NonNull;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
 import java.nio.charset.StandardCharsets;
@@ -34,10 +39,14 @@ public class ItemListController {
 
     private final IItemListService itemListService;
     private final ImageStorageService imageStorageService;
+    private final ApiRateLimiter duplicateRateLimiter;
 
-    public ItemListController(IItemListService itemListService, ImageStorageService imageStorageService) {
+    public ItemListController(IItemListService itemListService,
+                              ImageStorageService imageStorageService,
+                              @Qualifier("duplicateRateLimiter") ApiRateLimiter duplicateRateLimiter) {
         this.itemListService = itemListService;
         this.imageStorageService = imageStorageService;
+        this.duplicateRateLimiter = duplicateRateLimiter;
     }
 
     @GetMapping
@@ -90,6 +99,19 @@ public class ItemListController {
     public ResponseEntity<Void> deleteList(@PathVariable @NonNull UUID id) {
         itemListService.deleteList(id);
         return ResponseEntity.noContent().build();
+    }
+
+    @PostMapping("/{id}/duplicate")
+    public ResponseEntity<ItemListResponse> duplicateList(
+            @PathVariable @NonNull UUID id,
+            @AuthenticationPrincipal CustomUserDetails userDetails
+    ) {
+        if (!duplicateRateLimiter.tryAcquire("duplicate:user:" + userDetails.getId()).allowed()) {
+            throw new RateLimitExceededException("Too many duplication requests. Please try again later.");
+        }
+        ItemList duplicated = itemListService.duplicateList(id);
+        return ResponseEntity.status(HttpStatus.CREATED)
+                .body(ItemListResponse.fromEntityWithoutItems(duplicated));
     }
 
     @GetMapping("/{id}/export")
