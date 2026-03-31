@@ -376,6 +376,7 @@ export default function ListDetail() {
             <div className="flex items-center gap-2">
               <button
                 onClick={toggleSelectAll}
+                aria-pressed={allOnPageSelected}
                 className="flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors"
               >
                 <div className={cn(
@@ -418,6 +419,10 @@ export default function ListDetail() {
                     isSelected && "ring-2 ring-brand"
                   )}
                   onClick={selectMode ? () => toggleSelect(item.id) : undefined}
+                  role={selectMode ? "checkbox" : undefined}
+                  aria-checked={selectMode ? isSelected : undefined}
+                  tabIndex={selectMode ? 0 : undefined}
+                  onKeyDown={selectMode ? (e) => { if (e.key === ' ' || e.key === 'Enter') { e.preventDefault(); toggleSelect(item.id); } } : undefined}
                 >
                   <div className="aspect-[4/3] bg-muted flex items-center justify-center overflow-hidden relative">
                     {safeImageUrl ? (
