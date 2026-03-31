@@ -18,7 +18,9 @@ import com.inventory.repository.ItemRepository;
 import com.inventory.repository.specification.ItemSpecification;
 import com.inventory.security.SecurityUtils;
 import com.inventory.security.WorkspaceAccessUtils;
+import com.inventory.enums.ActivityEventType;
 import com.inventory.service.CustomFieldValidator;
+import com.inventory.service.IActivityService;
 import com.inventory.service.IItemService;
 import com.inventory.service.ImageProcessingService;
 import com.inventory.service.ImageStorageService;
@@ -57,11 +59,13 @@ public class ItemServiceImpl implements IItemService {
     private final WorkspaceAccessUtils workspaceAccessUtils;
     private final ImageStorageService imageStorageService;
     private final ImageProcessingService imageProcessingService;
+    private final IActivityService activityService;
 
     public ItemServiceImpl(ItemRepository itemRepository, ItemListRepository itemListRepository,
                            CustomFieldValidator customFieldValidator, SecurityUtils securityUtils,
                            WorkspaceAccessUtils workspaceAccessUtils,
-                           ImageStorageService imageStorageService, ImageProcessingService imageProcessingService) {
+                           ImageStorageService imageStorageService, ImageProcessingService imageProcessingService,
+                           IActivityService activityService) {
         this.itemRepository = itemRepository;
         this.itemListRepository = itemListRepository;
         this.customFieldValidator = customFieldValidator;
@@ -69,6 +73,7 @@ public class ItemServiceImpl implements IItemService {
         this.workspaceAccessUtils = workspaceAccessUtils;
         this.imageStorageService = imageStorageService;
         this.imageProcessingService = imageProcessingService;
+        this.activityService = activityService;
     }
 
     @Override
@@ -125,6 +130,9 @@ public class ItemServiceImpl implements IItemService {
 
         // Save first to get the generated ID
         Item savedItem = itemRepository.save(item);
+        activityService.record(
+                savedItem.getItemList().getWorkspace().getId(),
+                ActivityEventType.ITEM_CREATED, "ITEM", savedItem.getId(), savedItem.getName());
 
         if (image != null && !image.isEmpty()) {
             byte[] imageBytes = image.getBytes();
@@ -177,6 +185,9 @@ public class ItemServiceImpl implements IItemService {
                 if (oldImageKey != null) {
                     deleteImageQuietly(oldImageKey);
                 }
+                activityService.record(
+                        saved.getItemList().getWorkspace().getId(),
+                        ActivityEventType.ITEM_UPDATED, "ITEM", saved.getId(), saved.getName());
                 return saved;
             } catch (Exception e) {
                 deleteImageQuietly(imageKey);
@@ -184,7 +195,11 @@ public class ItemServiceImpl implements IItemService {
             }
         }
 
-        return itemRepository.save(item);
+        Item saved = itemRepository.save(item);
+        activityService.record(
+                saved.getItemList().getWorkspace().getId(),
+                ActivityEventType.ITEM_UPDATED, "ITEM", saved.getId(), saved.getName());
+        return saved;
     }
 
     @Override
@@ -203,6 +218,9 @@ public class ItemServiceImpl implements IItemService {
         }
 
         String imageKey = item.getImageKey();
+        activityService.record(
+                item.getItemList().getWorkspace().getId(),
+                ActivityEventType.ITEM_DELETED, "ITEM", item.getId(), item.getName());
         itemRepository.delete(item);
         if (imageKey != null) {
             deleteImageQuietly(imageKey);
