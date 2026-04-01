@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { useParams } from 'react-router-dom';
+import { useParams, Navigate } from 'react-router-dom';
 import { RefreshCw } from 'lucide-react';
 import { useActivityFeed } from '../hooks/useActivityFeed';
 import { Skeleton } from '../components/ui/skeleton';
@@ -30,7 +30,9 @@ export default function ActivityPage() {
   const { id: workspaceId } = useParams<{ id: string }>();
   const [filters, setFilters] = useState<ActivityFilters>({ page: 0, size: 20 });
 
-  const { data, loading, error, refresh } = useActivityFeed(workspaceId!, filters);
+  if (!workspaceId) return <Navigate to="/workspaces" replace />;
+
+  const { data, loading, error, refresh } = useActivityFeed(workspaceId, filters);
 
   const events = data?.content ?? [];
   const grouped = groupByDay(events);
@@ -143,7 +145,7 @@ function EventRow({ event }: { event: ActivityEvent }) {
   return (
     <div className="flex gap-3 items-start text-sm">
       <div className="h-8 w-8 rounded-full bg-muted flex items-center justify-center text-xs font-semibold shrink-0 uppercase">
-        {event.actorName.slice(0, 2)}
+        {(event.actorName ?? '??').slice(0, 2)}
       </div>
       <div className="flex-1 min-w-0">
         <p>

@@ -183,13 +183,16 @@ public class WorkspaceServiceImpl implements IWorkspaceService {
 
         // Send invitation email
         String inviteUrl = frontendUrl + "/workspaces/invitations/" + token;
+        String escapedName = workspace.getName()
+                .replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
+                .replace("\"", "&quot;").replace("'", "&#x27;");
         String subject = "Invitation à rejoindre l'espace de travail \"" + workspace.getName() + "\"";
         String html = """
                 <p>Vous avez été invité(e) à rejoindre l'espace de travail <strong>%s</strong> sur Shelfio.</p>
                 <p>Rôle : <strong>%s</strong></p>
                 <p><a href="%s">Accepter l'invitation</a></p>
                 <p>Cette invitation expire dans %d jours.</p>
-                """.formatted(workspace.getName(), request.role().name(), inviteUrl, INVITATION_EXPIRY_DAYS);
+                """.formatted(escapedName, request.role().name(), inviteUrl, INVITATION_EXPIRY_DAYS);
         emailSender.send(request.email(), subject, html);
 
         log.info("User {} invited {} to workspace {} as {}", userId, request.email(), workspaceId, request.role());
@@ -267,7 +270,7 @@ public class WorkspaceServiceImpl implements IWorkspaceService {
         member.setRole(invitation.getRole());
         workspaceMemberRepository.save(member);
         activityService.record(invitation.getWorkspace().getId(),
-                ActivityEventType.MEMBER_ADDED, "MEMBER", user.getId(), user.getEmail());
+                ActivityEventType.MEMBER_ADDED, "MEMBER", user.getId(), null);
 
         invitation.setStatus(InvitationStatus.ACCEPTED);
         workspaceInvitationRepository.save(invitation);

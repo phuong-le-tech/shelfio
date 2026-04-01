@@ -212,10 +212,13 @@ public class ItemListServiceImpl implements IItemListService {
     @Transactional
     public void deleteList(@NonNull UUID id) {
         if (securityUtils.isAdmin()) {
-            if (!itemListRepository.existsById(id)) {
-                throw new ItemListNotFoundException(id);
-            }
-            itemListRepository.deleteById(id);
+            ItemList adminList = itemListRepository.findById(id)
+                    .orElseThrow(() -> new ItemListNotFoundException(id));
+            UUID wsId = adminList.getWorkspace().getId();
+            UUID listId = adminList.getId();
+            String listName = adminList.getName();
+            itemListRepository.delete(adminList);
+            activityService.record(wsId, ActivityEventType.LIST_DELETED, "LIST", listId, listName);
             return;
         }
 

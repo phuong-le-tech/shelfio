@@ -613,11 +613,11 @@ class ItemListServiceImplTest {
         @DisplayName("admin should delete any list")
         void admin_deletesAnyList() {
             when(securityUtils.isAdmin()).thenReturn(true);
-            when(itemListRepository.existsById(testListId)).thenReturn(true);
+            when(itemListRepository.findById(testListId)).thenReturn(Optional.of(testList));
 
             itemListService.deleteList(testListId);
 
-            verify(itemListRepository).deleteById(testListId);
+            verify(itemListRepository).delete(testList);
         }
 
         @Test
@@ -656,7 +656,7 @@ class ItemListServiceImplTest {
         void nonExistingList_throwsException() {
             UUID nonExistingId = UUID.randomUUID();
             when(securityUtils.isAdmin()).thenReturn(true);
-            when(itemListRepository.existsById(nonExistingId)).thenReturn(false);
+            when(itemListRepository.findById(nonExistingId)).thenReturn(Optional.empty());
 
             assertThatThrownBy(() -> itemListService.deleteList(nonExistingId))
                     .isInstanceOf(ItemListNotFoundException.class);

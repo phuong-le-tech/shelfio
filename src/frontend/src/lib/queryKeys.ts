@@ -1,3 +1,5 @@
+import type { ActivityFilters } from '../types/activity';
+
 export const queryKeys = {
   dashboard: {
     all: ['dashboard', 'stats'] as const,
@@ -21,7 +23,7 @@ export const queryKeys = {
     pendingInvitations: () => ['workspaces', 'invitations', 'pending'] as const,
   },
   activity: {
-    feed: (workspaceId: string, filters: object) =>
+    feed: (workspaceId: string, filters: ActivityFilters) =>
       ['activity', 'feed', workspaceId, filters] as const,
   },
   admin: {
