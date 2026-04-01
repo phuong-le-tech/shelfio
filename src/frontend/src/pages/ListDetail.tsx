@@ -608,9 +608,9 @@ export default function ListDetail() {
         ? names.map((n) => `• ${n}`).join("\n")
         : [
             ...names.slice(0, 5).map((n) => `• ${n}`),
-            `• et ${names.length - 5} autre${names.length - 5 !== 1 ? "s" : ""}`,
+            `• et ${names.length - 5} autre${names.length - 5 === 1 ? "" : "s"}`,
           ].join("\n");
-    return `Êtes-vous sûr de vouloir supprimer ${count} article${count !== 1 ? "s" : ""} ? Cette action est irréversible.\n\n${preview}`;
+    return `Êtes-vous sûr de vouloir supprimer ${count} article${count === 1 ? "" : "s"} ? Cette action est irréversible.\n\n${preview}`;
   };
 
   const handleBulkDeleteConfirm = () => {
@@ -622,8 +622,7 @@ export default function ListDetail() {
     try {
       const item = await itemsApi.getByBarcode(barcode);
       if (item) {
-        const targetList = item.itemListId === id ? id : item.itemListId;
-        navigate(`/lists/${targetList}/items/${item.id}/edit`);
+        navigate(`/lists/${item.itemListId}/items/${item.id}/edit`);
       } else {
         navigate(`/lists/${id}/items/new?barcode=${encodeURIComponent(barcode)}`);
       }
@@ -910,8 +909,8 @@ export default function ListDetail() {
       {selectedIds.size > 0 && (
         <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 flex items-center gap-3 bg-card border shadow-float rounded-2xl px-4 py-3 animate-fade-in-up">
           <span className="text-sm font-medium">
-            {selectedIds.size} article{selectedIds.size !== 1 ? "s" : ""}{" "}
-            sélectionné{selectedIds.size !== 1 ? "s" : ""}
+            {selectedIds.size} article{selectedIds.size === 1 ? "" : "s"}{" "}
+            sélectionné{selectedIds.size === 1 ? "" : "s"}
           </span>
           <div className="h-4 w-px bg-border" />
           <Button
