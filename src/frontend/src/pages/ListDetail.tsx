@@ -537,9 +537,8 @@ export default function ListDetail() {
   });
 
   const handleDragEnd = (event: DragEndEvent) => {
-    if (isViewer) return;
     const { active, over } = event;
-    if (!over || active.id === over.id) return;
+    if (isViewer || !over || active.id === over.id) return;
 
     const oldIndex = localItems.findIndex((i) => i.id === active.id.toString());
     const newIndex = localItems.findIndex((i) => i.id === over.id.toString());
@@ -939,7 +938,7 @@ export default function ListDetail() {
 
       <ConfirmModal
         isOpen={bulkDeleteConfirmOpen}
-        title={`Supprimer ${selectedIds.size} article${selectedIds.size !== 1 ? "s" : ""}`}
+        title={`Supprimer ${selectedIds.size} article${selectedIds.size === 1 ? "" : "s"}`}
         message={buildBulkDeleteMessage()}
         confirmLabel="Supprimer"
         onConfirm={handleBulkDeleteConfirm}
