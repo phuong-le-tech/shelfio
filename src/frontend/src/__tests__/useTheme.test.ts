@@ -11,10 +11,10 @@ const localStorageMock = {
   removeItem: (key: string) => { delete storage[key]; },
   clear: () => { Object.keys(storage).forEach(k => delete storage[k]); },
 };
-Object.defineProperty(window, 'localStorage', { value: localStorageMock });
+Object.defineProperty(globalThis, 'localStorage', { value: localStorageMock });
 
 function setPrefersDark(dark: boolean) {
-  Object.defineProperty(window, 'matchMedia', {
+  Object.defineProperty(globalThis, 'matchMedia', {
     writable: true,
     value: (query: string) => ({
       matches: query === '(prefers-color-scheme: dark)' ? dark : false,

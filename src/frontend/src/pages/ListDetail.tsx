@@ -473,7 +473,7 @@ export default function ListDetail() {
     page: isDndMode ? 0 : itemPage,
     size: isDndMode ? 500 : ITEMS_PER_PAGE,
     sortBy,
-    sortDir: sortOption.dir as "asc" | "desc",
+    sortDir: sortOption.dir,
   };
 
   const { data: itemsData, isLoading: itemsLoading } = useQuery({
@@ -509,7 +509,7 @@ export default function ListDetail() {
     onSuccess: () => {
       const count = selectedIds.size;
       showToast(
-        `${count} article${count !== 1 ? "s" : ""} supprimé${count !== 1 ? "s" : ""}`,
+        `${count} article${count === 1 ? "" : "s"} supprimé${count === 1 ? "" : "s"}`,
         "success"
       );
       setSelectedIds(new Set());
@@ -621,10 +621,9 @@ export default function ListDetail() {
   const handleBarcodeScan = async (barcode: string) => {
     try {
       const item = await itemsApi.getByBarcode(barcode);
-      if (item && item.itemListId === id) {
-        navigate(`/lists/${id}/items/${item.id}/edit`);
-      } else if (item) {
-        navigate(`/lists/${item.itemListId}/items/${item.id}/edit`);
+      if (item) {
+        const targetList = item.itemListId === id ? id : item.itemListId;
+        navigate(`/lists/${targetList}/items/${item.id}/edit`);
       } else {
         navigate(`/lists/${id}/items/new?barcode=${encodeURIComponent(barcode)}`);
       }
