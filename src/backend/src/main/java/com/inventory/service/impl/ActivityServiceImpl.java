@@ -12,6 +12,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.jpa.domain.Specification;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Propagation;
@@ -62,8 +63,16 @@ public class ActivityServiceImpl implements IActivityService {
     public Page<ActivityEventResponse> getActivity(UUID workspaceId, UUID actorId,
                                                    String entityType, Instant from,
                                                    Instant to, Pageable pageable) {
-        Page<ActivityEvent> page = activityEventRepository.findFiltered(
-                workspaceId, actorId, entityType, from, to, pageable);
+        Specification<ActivityEvent> spec = (root, query, cb) -> {
+            var predicates = new java.util.ArrayList<jakarta.persistence.criteria.Predicate>();
+            predicates.add(cb.equal(root.get("workspaceId"), workspaceId));
+            if (actorId != null) predicates.add(cb.equal(root.get("actorId"), actorId));
+            if (entityType != null) predicates.add(cb.equal(root.get("entityType"), entityType));
+            if (from != null) predicates.add(cb.greaterThanOrEqualTo(root.get("occurredAt"), from));
+            if (to != null) predicates.add(cb.lessThanOrEqualTo(root.get("occurredAt"), to));
+            return cb.and(predicates.toArray(new jakarta.persistence.criteria.Predicate[0]));
+        };
+        Page<ActivityEvent> page = activityEventRepository.findAll(spec, pageable);
 
         Set<UUID> actorIds = page.getContent().stream()
                 .map(ActivityEvent::getActorId)
