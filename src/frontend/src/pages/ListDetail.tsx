@@ -24,6 +24,7 @@ import {
   STATUS_BADGE_VARIANTS,
   formatCustomFieldValue,
   type Item,
+  type ItemListWithItems,
 } from "../types/item";
 import { SkeletonCard, SkeletonText } from "../components/Skeleton";
 import { useToast } from "../components/Toast";
@@ -48,7 +49,6 @@ import { sanitizeImageUrl } from "../utils/imageUtils";
 import { queryKeys } from "../lib/queryKeys";
 import { Breadcrumb } from "../components/Breadcrumb";
 import { useWorkspace } from "../contexts/WorkspaceContext";
-import type { ItemListWithItems } from "../types/item";
 import {
   DndContext,
   closestCenter,
@@ -79,7 +79,7 @@ const SORT_OPTIONS = [
 ] as const;
 type SortByValue = (typeof SORT_OPTIONS)[number]["value"];
 
-type SortableItemCardProps = {
+type SortableItemCardProps = Readonly<{
   item: Item;
   list: ItemListWithItems;
   listId: string;
@@ -91,7 +91,161 @@ type SortableItemCardProps = {
   onToggleSelect: (id: string) => void;
   onDeleteRequest: (id: string) => void;
   deleteIsPending: boolean;
-};
+}>;
+
+type ItemCardOverlayProps = Readonly<{
+  isDndMode: boolean;
+  selectMode: boolean;
+  isSelected: boolean;
+  isViewer: boolean;
+  item: Item;
+  listId: string;
+  navigate: (path: string) => void;
+  onDeleteRequest: (id: string) => void;
+  deleteIsPending: boolean;
+  dragAttributes: ReturnType<typeof useSortable>["attributes"];
+  dragListeners: ReturnType<typeof useSortable>["listeners"];
+}>;
+
+function ItemCardOverlay({
+  isDndMode,
+  selectMode,
+  isSelected,
+  isViewer,
+  item,
+  listId,
+  navigate,
+  onDeleteRequest,
+  deleteIsPending,
+  dragAttributes,
+  dragListeners,
+}: ItemCardOverlayProps) {
+  if (isDndMode) {
+    return (
+      <div className="absolute top-3 left-3" {...dragAttributes} {...dragListeners}>
+        <div className="h-8 w-8 bg-background/90 rounded-md flex items-center justify-center cursor-grab active:cursor-grabbing shadow-sm">
+          <GripVertical className="h-4 w-4 text-muted-foreground" />
+        </div>
+      </div>
+    );
+  }
+  if (selectMode) {
+    const indicatorClass = isSelected ? "bg-brand border-brand" : "bg-background/90 border-border";
+    return (
+      <div className="absolute top-3 left-3">
+        <div
+          className={cn(
+            "h-6 w-6 rounded-full border-2 flex items-center justify-center shadow-sm transition-colors",
+            indicatorClass
+          )}
+        >
+          {isSelected && <Check className="h-3.5 w-3.5 text-white" />}
+        </div>
+      </div>
+    );
+  }
+  if (isViewer) return null;
+  return (
+    <div className="absolute top-3 left-3 opacity-100 md:opacity-0 md:group-hover:opacity-100 md:focus-within:opacity-100 transition-opacity">
+      <DropdownMenu>
+        <DropdownMenuTrigger asChild>
+          <Button
+            variant="secondary"
+            size="icon"
+            aria-label="Options de l'article"
+            className="h-8 w-8 shadow-sm"
+          >
+            <MoreHorizontal className="h-4 w-4" />
+          </Button>
+        </DropdownMenuTrigger>
+        <DropdownMenuContent align="start">
+          <DropdownMenuItem
+            onClick={() => navigate(`/lists/${listId}/items/${item.id}/edit`)}
+          >
+            <Pencil className="h-4 w-4 mr-2" />
+            Modifier
+          </DropdownMenuItem>
+          <DropdownMenuItem
+            onClick={() => onDeleteRequest(item.id)}
+            disabled={deleteIsPending}
+            className="text-destructive focus:text-destructive"
+          >
+            <Trash2 className="h-4 w-4 mr-2" />
+            Supprimer
+          </DropdownMenuItem>
+        </DropdownMenuContent>
+      </DropdownMenu>
+    </div>
+  );
+}
+
+type ItemCardBodyProps = Readonly<{
+  selectMode: boolean;
+  isDndMode: boolean;
+  item: Item;
+  list: ItemListWithItems;
+  listId: string;
+}>;
+
+function ItemCardBody({ selectMode, isDndMode, item, list, listId }: ItemCardBodyProps) {
+  if (selectMode) {
+    return (
+      <div className="p-4">
+        <h3 className="font-semibold tracking-tight mb-1">{item.name}</h3>
+        <p className="text-muted-foreground text-sm">
+          <span className="font-medium">Stock:</span> {item.stock}
+        </p>
+      </div>
+    );
+  }
+  if (isDndMode) {
+    return (
+      <div className="p-4">
+        <h3 className="font-semibold tracking-tight mb-1">{item.name}</h3>
+        <p className="text-muted-foreground text-sm mb-1">
+          <span className="font-medium">Stock:</span> {item.stock}
+        </p>
+        {item.barcode && (
+          <p className="text-muted-foreground text-xs mb-1 font-mono truncate">
+            <span className="font-medium font-sans">Code-barres:</span> {item.barcode}
+          </p>
+        )}
+      </div>
+    );
+  }
+  return (
+    <Link
+      to={`/lists/${listId}/items/${item.id}/edit`}
+      className="block p-4 cursor-pointer"
+    >
+      <h3 className="font-semibold tracking-tight mb-1">{item.name}</h3>
+      <p className="text-muted-foreground text-sm mb-1">
+        <span className="font-medium">Stock:</span> {item.stock}
+      </p>
+      {item.barcode && (
+        <p className="text-muted-foreground text-xs mb-1 font-mono truncate">
+          <span className="font-medium font-sans">Code-barres:</span> {item.barcode}
+        </p>
+      )}
+      {list.customFieldDefinitions && list.customFieldDefinitions.length > 0 && (
+        <div className="space-y-0.5">
+          {[...list.customFieldDefinitions]
+            .sort((a, b) => a.displayOrder - b.displayOrder)
+            .map((def) => {
+              const value = item.customFieldValues?.[def.name];
+              if (value === undefined || value === null || value === "") return null;
+              return (
+                <p key={def.name} className="text-muted-foreground text-xs">
+                  <span className="font-medium">{def.label}:</span>{" "}
+                  {formatCustomFieldValue(def.type, value)}
+                </p>
+              );
+            })}
+        </div>
+      )}
+    </Link>
+  );
+}
 
 function SortableItemCard({
   item,
@@ -106,197 +260,172 @@ function SortableItemCard({
   onDeleteRequest,
   deleteIsPending,
 }: SortableItemCardProps) {
-  const {
-    attributes,
-    listeners,
-    setNodeRef,
-    transform,
-    transition,
-    isDragging,
-  } = useSortable({ id: item.id, disabled: !isDndMode });
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } =
+    useSortable({ id: item.id, disabled: !isDndMode });
 
   const style = isDndMode
-    ? {
-        transform: CSS.Transform.toString(transform),
-        transition,
-        opacity: isDragging ? 0.5 : 1,
-        zIndex: isDragging ? 10 : undefined,
-      }
+    ? { transform: CSS.Transform.toString(transform), transition, opacity: isDragging ? 0.5 : 1, zIndex: isDragging ? 10 : undefined }
     : undefined;
 
   const safeImageUrl = sanitizeImageUrl(item.imageUrl);
 
+  const cardClass = cn(
+    "group rounded-2xl border bg-card shadow-card overflow-hidden transition-all duration-300 hover:shadow-elevated",
+    isSelected && "ring-2 ring-brand",
+    isDndMode && "cursor-default"
+  );
+
+  const cardInner = (
+    <>
+      <div className="aspect-[4/3] bg-muted flex items-center justify-center overflow-hidden relative">
+        {safeImageUrl ? (
+          <img
+            src={safeImageUrl}
+            alt={item.name}
+            loading="lazy"
+            className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
+            onError={(e) => { e.currentTarget.style.display = "none"; }}
+          />
+        ) : (
+          <div className="text-muted-foreground/40 flex flex-col items-center">
+            <Package className="h-10 w-10 mb-1" />
+          </div>
+        )}
+        <div className="absolute top-3 right-3">
+          <Badge variant={STATUS_BADGE_VARIANTS[item.status]}>
+            {formatStatus(item.status)}
+          </Badge>
+        </div>
+        <ItemCardOverlay
+          isDndMode={isDndMode}
+          selectMode={selectMode}
+          isSelected={isSelected}
+          isViewer={isViewer}
+          item={item}
+          listId={listId}
+          navigate={navigate}
+          onDeleteRequest={onDeleteRequest}
+          deleteIsPending={deleteIsPending}
+          dragAttributes={attributes}
+          dragListeners={listeners}
+        />
+      </div>
+      <ItemCardBody
+        selectMode={selectMode}
+        isDndMode={isDndMode}
+        item={item}
+        list={list}
+        listId={listId}
+      />
+    </>
+  );
+
   return (
     <div ref={setNodeRef} style={style}>
-      <div
-        className={cn(
-          "group rounded-2xl border bg-card shadow-card overflow-hidden transition-all duration-300 hover:shadow-elevated",
-          selectMode && "cursor-pointer",
-          isSelected && "ring-2 ring-brand",
-          isDndMode && "cursor-default"
-        )}
-        onClick={selectMode ? () => onToggleSelect(item.id) : undefined}
-        role={selectMode ? "checkbox" : undefined}
-        aria-checked={selectMode ? isSelected : undefined}
-        tabIndex={selectMode ? 0 : undefined}
-        onKeyDown={
-          selectMode
-            ? (e) => {
-                if (e.key === " " || e.key === "Enter") {
-                  e.preventDefault();
-                  onToggleSelect(item.id);
-                }
-              }
-            : undefined
-        }
-      >
-        <div className="aspect-[4/3] bg-muted flex items-center justify-center overflow-hidden relative">
-          {safeImageUrl ? (
-            <img
-              src={safeImageUrl}
-              alt={item.name}
-              loading="lazy"
-              className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
-              onError={(e) => {
-                e.currentTarget.style.display = "none";
-              }}
-            />
-          ) : (
-            <div className="text-muted-foreground/40 flex flex-col items-center">
-              <Package className="h-10 w-10 mb-1" />
-            </div>
-          )}
-          <div className="absolute top-3 right-3">
-            <Badge variant={STATUS_BADGE_VARIANTS[item.status]}>
-              {formatStatus(item.status)}
-            </Badge>
-          </div>
-          {isDndMode ? (
-            <div
-              className="absolute top-3 left-3"
-              {...attributes}
-              {...listeners}
-            >
-              <div className="h-8 w-8 bg-background/90 rounded-md flex items-center justify-center cursor-grab active:cursor-grabbing shadow-sm">
-                <GripVertical className="h-4 w-4 text-muted-foreground" />
-              </div>
-            </div>
-          ) : selectMode ? (
-            <div className="absolute top-3 left-3">
-              <div
-                className={cn(
-                  "h-6 w-6 rounded-full border-2 flex items-center justify-center shadow-sm transition-colors",
-                  isSelected
-                    ? "bg-brand border-brand"
-                    : "bg-background/90 border-border"
-                )}
-              >
-                {isSelected && <Check className="h-3.5 w-3.5 text-white" />}
-              </div>
-            </div>
-          ) : (
-            !isViewer && (
-              <div className="absolute top-3 left-3 opacity-100 md:opacity-0 md:group-hover:opacity-100 md:focus-within:opacity-100 transition-opacity">
-                <DropdownMenu>
-                  <DropdownMenuTrigger asChild>
-                    <Button
-                      variant="secondary"
-                      size="icon"
-                      aria-label="Options de l'article"
-                      className="h-8 w-8 shadow-sm"
-                    >
-                      <MoreHorizontal className="h-4 w-4" />
-                    </Button>
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent align="start">
-                    <DropdownMenuItem
-                      onClick={() =>
-                        navigate(`/lists/${listId}/items/${item.id}/edit`)
-                      }
-                    >
-                      <Pencil className="h-4 w-4 mr-2" />
-                      Modifier
-                    </DropdownMenuItem>
-                    <DropdownMenuItem
-                      onClick={() => onDeleteRequest(item.id)}
-                      disabled={deleteIsPending}
-                      className="text-destructive focus:text-destructive"
-                    >
-                      <Trash2 className="h-4 w-4 mr-2" />
-                      Supprimer
-                    </DropdownMenuItem>
-                  </DropdownMenuContent>
-                </DropdownMenu>
-              </div>
-            )
-          )}
-        </div>
-
-        {selectMode ? (
-          <div className="p-4">
-            <h3 className="font-semibold tracking-tight mb-1">{item.name}</h3>
-            <p className="text-muted-foreground text-sm">
-              <span className="font-medium">Stock:</span> {item.stock}
-            </p>
-          </div>
-        ) : isDndMode ? (
-          <div className="p-4">
-            <h3 className="font-semibold tracking-tight mb-1">{item.name}</h3>
-            <p className="text-muted-foreground text-sm mb-1">
-              <span className="font-medium">Stock:</span> {item.stock}
-            </p>
-            {item.barcode && (
-              <p className="text-muted-foreground text-xs mb-1 font-mono truncate">
-                <span className="font-medium font-sans">Code-barres:</span>{" "}
-                {item.barcode}
-              </p>
-            )}
-          </div>
-        ) : (
-          <Link
-            to={`/lists/${listId}/items/${item.id}/edit`}
-            className="block p-4 cursor-pointer"
-          >
-            <h3 className="font-semibold tracking-tight mb-1">{item.name}</h3>
-            <p className="text-muted-foreground text-sm mb-1">
-              <span className="font-medium">Stock:</span> {item.stock}
-            </p>
-            {item.barcode && (
-              <p className="text-muted-foreground text-xs mb-1 font-mono truncate">
-                <span className="font-medium font-sans">Code-barres:</span>{" "}
-                {item.barcode}
-              </p>
-            )}
-            {list.customFieldDefinitions &&
-              list.customFieldDefinitions.length > 0 && (
-                <div className="space-y-0.5">
-                  {[...list.customFieldDefinitions]
-                    .sort((a, b) => a.displayOrder - b.displayOrder)
-                    .map((def) => {
-                      const value = item.customFieldValues?.[def.name];
-                      if (value === undefined || value === null || value === "")
-                        return null;
-                      return (
-                        <p
-                          key={def.name}
-                          className="text-muted-foreground text-xs"
-                        >
-                          <span className="font-medium">{def.label}:</span>{" "}
-                          {formatCustomFieldValue(def.type, value)}
-                        </p>
-                      );
-                    })}
-                </div>
-              )}
-          </Link>
-        )}
-      </div>
+      {selectMode ? (
+        <label className={cn(cardClass, "cursor-pointer block")}>
+          <input
+            type="checkbox"
+            checked={isSelected}
+            onChange={() => onToggleSelect(item.id)}
+            className="sr-only"
+          />
+          {cardInner}
+        </label>
+      ) : (
+        <div className={cardClass}>{cardInner}</div>
+      )}
     </div>
   );
 }
 
+type ItemsGridProps = Readonly<{
+  isDndMode: boolean;
+  localItems: Item[];
+  items: Item[];
+  list: ItemListWithItems;
+  listId: string;
+  selectMode: boolean;
+  selectedIds: Set<string>;
+  isViewer: boolean;
+  navigate: (path: string) => void;
+  sensors: ReturnType<typeof useSensors>;
+  onDragEnd: (event: DragEndEvent) => void;
+  onToggleSelect: (id: string) => void;
+  onDeleteRequest: (id: string) => void;
+  deleteMutation: { isPending: boolean; variables: string | undefined };
+}>;
+
+function ItemsGrid({
+  isDndMode,
+  localItems,
+  items,
+  list,
+  listId,
+  selectMode,
+  selectedIds,
+  isViewer,
+  navigate,
+  sensors,
+  onDragEnd,
+  onToggleSelect,
+  onDeleteRequest,
+  deleteMutation,
+}: ItemsGridProps) {
+  const gridClass = "grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5";
+
+  if (isDndMode) {
+    return (
+      <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={onDragEnd}>
+        <SortableContext items={localItems.map((i) => i.id)} strategy={rectSortingStrategy}>
+          <div className={gridClass}>
+            {localItems.map((item) => (
+              <SortableItemCard
+                key={item.id}
+                item={item}
+                list={list}
+                listId={listId}
+                selectMode={false}
+                isSelected={false}
+                isViewer={isViewer}
+                isDndMode={true}
+                navigate={navigate}
+                onToggleSelect={onToggleSelect}
+                onDeleteRequest={onDeleteRequest}
+                deleteIsPending={deleteMutation.isPending && deleteMutation.variables === item.id}
+              />
+            ))}
+          </div>
+        </SortableContext>
+      </DndContext>
+    );
+  }
+
+  return (
+    <StaggeredList className={gridClass}>
+      {items.map((item) => (
+        <StaggeredItem key={item.id}>
+          <SortableItemCard
+            item={item}
+            list={list}
+            listId={listId}
+            selectMode={selectMode}
+            isSelected={selectedIds.has(item.id)}
+            isViewer={isViewer}
+            isDndMode={false}
+            navigate={navigate}
+            onToggleSelect={onToggleSelect}
+            onDeleteRequest={onDeleteRequest}
+            deleteIsPending={deleteMutation.isPending && deleteMutation.variables === item.id}
+          />
+        </StaggeredItem>
+      ))}
+    </StaggeredList>
+  );
+}
+
 export default function ListDetail() {
-  const { id } = useParams();
+  const { id } = useParams() as { id: string };
   const navigate = useNavigate();
   const { showToast } = useToast();
   const queryClient = useQueryClient();
@@ -324,8 +453,8 @@ export default function ListDetail() {
   );
 
   const { data: list, isLoading: listLoading, error: listError } = useQuery({
-    queryKey: queryKeys.lists.detail(id!),
-    queryFn: () => listsApi.getById(id!),
+    queryKey: queryKeys.lists.detail(id),
+    queryFn: () => listsApi.getById(id),
     enabled: !!id,
   });
 
@@ -337,9 +466,9 @@ export default function ListDetail() {
     }
   }, [listError, list, showToast, navigate]);
 
-  const sortOption = SORT_OPTIONS.find((o) => o.value === sortBy)!;
+  const sortOption = SORT_OPTIONS.find((o) => o.value === sortBy) ?? SORT_OPTIONS[0];
   const itemParams = {
-    itemListId: id!,
+    itemListId: id,
     status: statusFilter || undefined,
     page: isDndMode ? 0 : itemPage,
     size: isDndMode ? 500 : ITEMS_PER_PAGE,
@@ -367,7 +496,7 @@ export default function ListDetail() {
     onSuccess: () => {
       showToast("Article supprimé avec succès", "success");
       queryClient.invalidateQueries({ queryKey: queryKeys.items.all });
-      queryClient.invalidateQueries({ queryKey: queryKeys.lists.detail(id!) });
+      queryClient.invalidateQueries({ queryKey: queryKeys.lists.detail(id) });
       queryClient.invalidateQueries({ queryKey: queryKeys.dashboard.all });
     },
     onError: () => {
@@ -386,7 +515,7 @@ export default function ListDetail() {
       setSelectedIds(new Set());
       setSelectMode(false);
       queryClient.invalidateQueries({ queryKey: queryKeys.items.all });
-      queryClient.invalidateQueries({ queryKey: queryKeys.lists.detail(id!) });
+      queryClient.invalidateQueries({ queryKey: queryKeys.lists.detail(id) });
       queryClient.invalidateQueries({ queryKey: queryKeys.dashboard.all });
     },
     onError: () => {
@@ -419,7 +548,7 @@ export default function ListDetail() {
     const reordered = arrayMove(localItems, oldIndex, newIndex);
     setLocalItems(reordered);
     reorderMutation.mutate({
-      listId: id!,
+      listId: id,
       orderedIds: reordered.map((i) => i.id),
     });
   };
@@ -505,7 +634,6 @@ export default function ListDetail() {
   };
 
   const handleExportCsv = async () => {
-    if (!id) return;
     setIsExporting(true);
     try {
       const { blob, filename } = await listsApi.exportCsv(id);
@@ -738,63 +866,22 @@ export default function ListDetail() {
         </div>
       ) : (
         <>
-          {isDndMode ? (
-            <DndContext
-              sensors={sensors}
-              collisionDetection={closestCenter}
-              onDragEnd={handleDragEnd}
-            >
-              <SortableContext
-                items={localItems.map((i) => i.id)}
-                strategy={rectSortingStrategy}
-              >
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5">
-                  {localItems.map((item) => (
-                    <SortableItemCard
-                      key={item.id}
-                      item={item}
-                      list={list}
-                      listId={id!}
-                      selectMode={false}
-                      isSelected={false}
-                      isViewer={isViewer}
-                      isDndMode={true}
-                      navigate={navigate}
-                      onToggleSelect={toggleSelect}
-                      onDeleteRequest={setPendingDeleteId}
-                      deleteIsPending={
-                        deleteMutation.isPending &&
-                        deleteMutation.variables === item.id
-                      }
-                    />
-                  ))}
-                </div>
-              </SortableContext>
-            </DndContext>
-          ) : (
-            <StaggeredList className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5">
-              {items.map((item) => (
-                <StaggeredItem key={item.id}>
-                  <SortableItemCard
-                    item={item}
-                    list={list}
-                    listId={id!}
-                    selectMode={selectMode}
-                    isSelected={selectedIds.has(item.id)}
-                    isViewer={isViewer}
-                    isDndMode={false}
-                    navigate={navigate}
-                    onToggleSelect={toggleSelect}
-                    onDeleteRequest={setPendingDeleteId}
-                    deleteIsPending={
-                      deleteMutation.isPending &&
-                      deleteMutation.variables === item.id
-                    }
-                  />
-                </StaggeredItem>
-              ))}
-            </StaggeredList>
-          )}
+          <ItemsGrid
+            isDndMode={isDndMode}
+            localItems={localItems}
+            items={items}
+            list={list}
+            listId={id}
+            selectMode={selectMode}
+            selectedIds={selectedIds}
+            isViewer={isViewer}
+            navigate={navigate}
+            sensors={sensors}
+            onDragEnd={handleDragEnd}
+            onToggleSelect={toggleSelect}
+            onDeleteRequest={setPendingDeleteId}
+            deleteMutation={deleteMutation}
+          />
 
           {items.length === 0 && (
             <div className="text-center py-20 animate-fade-in">
