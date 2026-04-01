@@ -19,15 +19,15 @@ export interface ActivityEvent {
 }
 
 export const ACTION_LABELS: Record<ActivityEventType, string> = {
-  ITEM_CREATED: 'created item',
-  ITEM_UPDATED: 'updated item',
-  ITEM_DELETED: 'deleted item',
-  LIST_CREATED: 'created list',
-  LIST_UPDATED: 'updated list',
-  LIST_DELETED: 'deleted list',
-  MEMBER_ADDED: 'joined the workspace',
-  MEMBER_REMOVED: 'left the workspace',
-  MEMBER_ROLE_CHANGED: 'role updated',
+  ITEM_CREATED: 'a créé l\'article',
+  ITEM_UPDATED: 'a modifié l\'article',
+  ITEM_DELETED: 'a supprimé l\'article',
+  LIST_CREATED: 'a créé la liste',
+  LIST_UPDATED: 'a modifié la liste',
+  LIST_DELETED: 'a supprimé la liste',
+  MEMBER_ADDED: 'a rejoint l\'espace de travail',
+  MEMBER_REMOVED: 'a quitté l\'espace de travail',
+  MEMBER_ROLE_CHANGED: 'a eu son rôle modifié',
 };
 
 export interface ActivityFilters {

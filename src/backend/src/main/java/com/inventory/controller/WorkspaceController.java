@@ -93,14 +93,22 @@ public class WorkspaceController {
         return ResponseEntity.noContent().build();
     }
 
+    private static final int MAX_PAGE_SIZE = 100;
+    private static final java.util.Set<String> VALID_ENTITY_TYPES = java.util.Set.of("ITEM", "LIST", "MEMBER");
+
     @GetMapping("/{id}/activity")
     public ResponseEntity<PageResponse<ActivityEventResponse>> getActivityFeed(
             @PathVariable UUID id,
             @RequestParam(defaultValue = "0") int page,
-            @RequestParam(defaultValue = "20") int size) {
+            @RequestParam(defaultValue = "20") int size,
+            @RequestParam(required = false) String entityType) {
+        if (entityType != null && !VALID_ENTITY_TYPES.contains(entityType)) {
+            return ResponseEntity.badRequest().build();
+        }
+        int cappedSize = Math.min(size, MAX_PAGE_SIZE);
         workspaceService.getWorkspaceById(id); // membership check
         Page<ActivityEventResponse> events = activityService.getActivity(
-                id, null, null, null, null, PageRequest.of(page, size));
+                id, null, entityType, null, null, PageRequest.of(page, cappedSize));
         return ResponseEntity.ok(PageResponse.from(events));
     }
 

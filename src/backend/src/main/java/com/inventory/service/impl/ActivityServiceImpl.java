@@ -76,7 +76,7 @@ public class ActivityServiceImpl implements IActivityService {
         return page.map(e -> ActivityEventResponse.fromEntity(e, actorMap.get(e.getActorId())));
     }
 
-    @Scheduled(cron = "0 0 3 * * *")
+    @Scheduled(cron = "0 0 3 * * *", zone = "UTC")
     @Transactional
     public void purgeOldEvents() {
         activityEventRepository.deleteOlderThan(Instant.now().minus(90, ChronoUnit.DAYS));
