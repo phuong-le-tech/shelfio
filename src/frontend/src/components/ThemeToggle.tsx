@@ -11,7 +11,9 @@ const LABELS: Record<string, string> = {
 export function ThemeToggle() {
   const { theme, resolvedTheme, cycleTheme } = useTheme();
 
-  const Icon = resolvedTheme === 'dark' ? Moon : theme === 'system' ? Monitor : Sun;
+  let Icon = Sun;
+  if (resolvedTheme === 'dark') Icon = Moon;
+  else if (theme === 'system') Icon = Monitor;
 
   return (
     <TooltipProvider delayDuration={300}>

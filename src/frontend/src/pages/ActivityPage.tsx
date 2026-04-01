@@ -32,7 +32,7 @@ export default function ActivityPage() {
   return <ActivityPageInner workspaceId={workspaceId} />;
 }
 
-function ActivityPageInner({ workspaceId }: { workspaceId: string }) {
+function ActivityPageInner({ workspaceId }: Readonly<{ workspaceId: string }>) {
   const [filters, setFilters] = useState<ActivityFilters>({ page: 0, size: 20 });
   const { data, loading, error, refresh } = useActivityFeed(workspaceId, filters);
 
@@ -140,7 +140,7 @@ function ActivityPageInner({ workspaceId }: { workspaceId: string }) {
   );
 }
 
-function EventRow({ event }: { event: ActivityEvent }) {
+function EventRow({ event }: Readonly<{ event: ActivityEvent }>) {
   const label = ACTION_LABELS[event.action];
   const ago = new Date(event.occurredAt).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
 
