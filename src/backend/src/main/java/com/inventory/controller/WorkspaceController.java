@@ -105,10 +105,11 @@ public class WorkspaceController {
         if (entityType != null && !VALID_ENTITY_TYPES.contains(entityType)) {
             return ResponseEntity.badRequest().build();
         }
+        int safePage = Math.max(0, page);
         int cappedSize = Math.min(size, MAX_PAGE_SIZE);
         workspaceService.getWorkspaceById(id); // membership check
         Page<ActivityEventResponse> events = activityService.getActivity(
-                id, null, entityType, null, null, PageRequest.of(page, cappedSize));
+                id, null, entityType, null, null, PageRequest.of(safePage, cappedSize));
         return ResponseEntity.ok(PageResponse.from(events));
     }
 

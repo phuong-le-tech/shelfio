@@ -28,10 +28,12 @@ function groupByDay(events: ActivityEvent[]): Map<string, ActivityEvent[]> {
 
 export default function ActivityPage() {
   const { id: workspaceId } = useParams<{ id: string }>();
-  const [filters, setFilters] = useState<ActivityFilters>({ page: 0, size: 20 });
-
   if (!workspaceId) return <Navigate to="/workspaces" replace />;
+  return <ActivityPageInner workspaceId={workspaceId} />;
+}
 
+function ActivityPageInner({ workspaceId }: { workspaceId: string }) {
+  const [filters, setFilters] = useState<ActivityFilters>({ page: 0, size: 20 });
   const { data, loading, error, refresh } = useActivityFeed(workspaceId, filters);
 
   const events = data?.content ?? [];
@@ -149,7 +151,7 @@ function EventRow({ event }: { event: ActivityEvent }) {
       </div>
       <div className="flex-1 min-w-0">
         <p>
-          <span className="font-medium">{event.actorName}</span>{' '}
+          <span className="font-medium">{event.actorName ?? 'Utilisateur supprimé'}</span>{' '}
           <span className="text-muted-foreground">{label}</span>
           {event.entityName && (
             <>
