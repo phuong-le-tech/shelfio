@@ -18,6 +18,7 @@ import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Sort;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -109,7 +110,8 @@ public class WorkspaceController {
         int cappedSize = Math.min(size, MAX_PAGE_SIZE);
         workspaceService.getWorkspaceById(id); // membership check
         Page<ActivityEventResponse> events = activityService.getActivity(
-                id, null, entityType, null, null, PageRequest.of(safePage, cappedSize));
+                id, null, entityType, null, null,
+                PageRequest.of(safePage, cappedSize, Sort.by(Sort.Direction.DESC, "occurredAt")));
         return ResponseEntity.ok(PageResponse.from(events));
     }
 

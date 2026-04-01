@@ -30,6 +30,8 @@ import java.util.UUID;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatCode;
 import static org.assertj.core.api.Assertions.within;
+import org.springframework.data.jpa.domain.Specification;
+
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyCollection;
 import static org.mockito.Mockito.*;
@@ -154,7 +156,7 @@ class ActivityServiceImplTest {
             actor.setId(actorId);
             actor.setEmail("actor@example.com");
 
-            when(activityEventRepository.findFiltered(eq(workspaceId), isNull(), isNull(), isNull(), isNull(), eq(pageable)))
+            when(activityEventRepository.findAll(any(Specification.class), any(Pageable.class)))
                     .thenReturn(eventPage);
             when(userRepository.findAllById(anyCollection())).thenReturn(List.of(actor));
 
@@ -186,7 +188,7 @@ class ActivityServiceImplTest {
             actor.setPictureUrl("https://example.com/avatar.jpg");
 
             Page<ActivityEvent> page = new PageImpl<>(List.of(event), PageRequest.of(0, 20), 1);
-            when(activityEventRepository.findFiltered(eq(wId), isNull(), isNull(), isNull(), isNull(), any(Pageable.class)))
+            when(activityEventRepository.findAll(any(Specification.class), any(Pageable.class)))
                     .thenReturn(page);
             when(userRepository.findAllById(anyCollection())).thenReturn(List.of(actor));
 
@@ -218,7 +220,7 @@ class ActivityServiceImplTest {
             actor.setEmail("actor@example.com");
 
             Page<ActivityEvent> page = new PageImpl<>(List.of(event1, event2), PageRequest.of(0, 20), 2);
-            when(activityEventRepository.findFiltered(any(), any(), any(), any(), any(), any())).thenReturn(page);
+            when(activityEventRepository.findAll(any(Specification.class), any(Pageable.class))).thenReturn(page);
             when(userRepository.findAllById(anyCollection())).thenReturn(List.of(actor));
 
             Page<ActivityEventResponse> result = activityService.getActivity(wId, null, null, null, null, PageRequest.of(0, 20));
@@ -245,7 +247,7 @@ class ActivityServiceImplTest {
             Pageable pageable = PageRequest.of(0, 20);
             Page<ActivityEvent> eventPage = new PageImpl<>(List.of(event), pageable, 1);
 
-            when(activityEventRepository.findFiltered(any(), any(), any(), any(), any(), eq(pageable)))
+            when(activityEventRepository.findAll(any(Specification.class), any(Pageable.class)))
                     .thenReturn(eventPage);
             when(userRepository.findAllById(anyCollection())).thenReturn(List.of());
 
